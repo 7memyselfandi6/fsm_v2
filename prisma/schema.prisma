@@ -1,0 +1,374 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Enums ---
+
+enum Role {
+  SUPER_ADMIN
+  MOA_EXPERT
+  MOA_MANAGER
+  REGION_EXPERT
+  REGION_MANAGER
+  ZONE_EXPERT
+  ZONE_MANAGER
+  WOREDA_EXPERT
+  WOREDA_MANAGER
+  KEBELE_DA
+  KEBELE_MANAGER
+  PC_ACCOUNTANT
+  PC_STOREMAN
+  UNION_MEMBER
+}
+
+enum MoaPosition {
+  MINISTER
+  STATE_MINISTER
+  LEAD_EXECUTIVE_MINISTER
+  DESK_HEAD
+  EXPERT
+}
+
+enum MoaRole {
+  DATA_LOGGER
+  DATA
+}
+
+enum MoaSector {
+  INPUT_AND_INVESTMENT
+  AGRICULTURE_AND_HORTICULTURE_INVESTMENT
+}
+
+enum MoaLeadExecutive {
+  INPUT_LE
+  CROP_LE
+  HORTICULTURE_LE
+  AGRICULTURE_AND_INVESTMENT_LE
+  URBAN_LE
+  COTTON_LE
+}
+
+enum DemandStatus {
+  PENDING
+  APPROVED
+  LOCKED
+}
+
+enum LockingLevel {
+  NONE
+  KEBELE
+  WOREDA
+  ZONE
+  REGION
+  MOA
+}
+
+enum PaymentMethod {
+  CASH
+  TELEBIRR
+  CBE
+  MOBILE_BANKING
+}
+
+enum SaleStatus {
+  PAYMENT_RECEIVED
+  DELIVERED
+}
+
+// --- Geographic Hierarchy ---
+
+model Region {
+  id           String         @id @default(uuid())
+  name         String         @unique
+  zones        Zone[]
+  regionalFlag RegionalFlag?
+  unions       Union[]
+  users        User[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Zone {
+  id        String   @id @default(uuid())
+  name      String
+  regionId  String
+  region    Region   @relation(fields: [regionId], references: [id])
+  woredas   Woreda[]
+  unions    Union[]
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, regionId])
+}
+
+model Woreda {
+  id        String   @id @default(uuid())
+  name      String
+  zoneId    String
+  zone      Zone     @relation(fields: [zoneId], references: [id])
+  kebeles   Kebele[]
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, zoneId])
+}
+
+model Kebele {
+  id        String   @id @default(uuid())
+  name      String
+  woredaId  String
+  woreda    Woreda   @relation(fields: [woredaId], references: [id])
+  users     User[]
+  farmers   Farmer[]
+  pcs       PC[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, woredaId])
+}
+
+model RegionalFlag {
+  id        String   @id @default(uuid())
+  name      String
+  category  String
+  imageUrl  String
+  regionId  String   @unique
+  region    Region   @relation(fields: [regionId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- User Management ---
+
+model User {
+  id                String   @id @default(uuid())
+  fullName          String
+  username          String   @unique
+  email             String   @unique
+  phoneNumber       String   @unique
+  password          String
+  profilePictureUrl String?
+  role              Role
+  
+  // Geographical Assignment (Optional based on role)
+  regionId          String?
+  region            Region?  @relation(fields: [regionId], references: [id])
+  zoneId            String?
+  zone              Zone?    @relation(fields: [zoneId], references: [id])
+  woredaId          String?
+  woreda            Woreda?  @relation(fields: [woredaId], references: [id])
+  kebeleId          String?
+  kebele            Kebele?  @relation(fields: [kebeleId], references: [id])
+  
+  // Organization Assignment (Optional based on role)
+  pcId              String?
+  pc                PC?      @relation(fields: [pcId], references: [id])
+  unionId           String?
+  union             Union?   @relation(fields: [unionId], references: [id])
+
+  // MoA Specific Fields
+  moaPosition      MoaPosition?
+  moaRole          MoaRole?
+  moaSector        MoaSector?
+  moaLeadExecutive MoaLeadExecutive?
+  moaDesk          String?
+
+  // Audit
+  salesAsAccountant FertilizerSale[] @relation("Accountant")
+  salesAsStoreman   FertilizerSale[] @relation("Storeman")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- Core Entities ---
+
+model Union {
+  id             String        @id @default(uuid())
+  name           String        @unique
+  regionId       String
+  region         Region        @relation(fields: [regionId], references: [id])
+  zoneId         String?
+  zone           Zone?         @relation(fields: [zoneId], references: [id])
+  destinations   Destination[]
+  users          User[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Destination {
+  id          String        @id @default(uuid())
+  name        String
+  unionId     String
+  union       Union         @relation(fields: [unionId], references: [id])
+  pcs         PC[]
+  lotDispatches LotDispatch[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model PC {
+  id             String        @id @default(uuid())
+  name           String
+  kebeleId       String
+  kebele         Kebele        @relation(fields: [kebeleId], references: [id])
+  destinationId  String
+  destination    Destination   @relation(fields: [destinationId], references: [id])
+  users          User[]
+  inventory      PCInventory[]
+  sales          FertilizerSale[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+// --- Demand Collection (Bottom-Up) ---
+
+model Farmer {
+  id                 String         @id @default(uuid())
+  uniqueFarmerId     String         @unique
+  fullName           String
+  gender             String
+  phoneNumber        String         @unique
+  address            String
+  farmAreaHectares   Float
+  photoUrl           String?
+  landCertificateUrl String?
+  kebeleId           String
+  kebele             Kebele         @relation(fields: [kebeleId], references: [id])
+  demands            FarmerDemand[]
+  sales              FertilizerSale[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model Season {
+  id      String         @id @default(uuid())
+  name    String         @unique
+  demands FarmerDemand[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CropCategory {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  cropTypes CropType[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CropType {
+  id         String       @id @default(uuid())
+  name       String
+  categoryId String
+  category   CropCategory @relation(fields: [categoryId], references: [id])
+  demands    FarmerDemand[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([name, categoryId])
+}
+
+model FertilizerType {
+  id               String           @id @default(uuid())
+  name             String           @unique
+  demands          FarmerDemand[]
+  inventory        PCInventory[]
+  sales            FertilizerSale[]
+  shippingLots     ShippingLot[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model FarmerDemand {
+  id                String         @id @default(uuid())
+  farmerId          String
+  farmer            Farmer         @relation(fields: [farmerId], references: [id])
+  seasonId          String
+  season            Season         @relation(fields: [seasonId], references: [id])
+  cropTypeId        String
+  cropType          CropType       @relation(fields: [cropTypeId], references: [id])
+  fertilizerTypeId  String
+  fertilizerType    FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
+  
+  // Adjustment Tracking
+  originalQuantity        Float
+  kebeleAdjustedQuantity  Float?
+  woredaAdjustedQuantity  Float?
+  zoneAdjustedQuantity    Float?
+  regionAdjustedQuantity  Float?
+  moaAdjustedQuantity     Float?
+  
+  status                  DemandStatus   @default(PENDING)
+  lockedAtLevel           LockingLevel   @default(NONE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- Supply Chain (Top-Down) ---
+
+model ShippingLot {
+  id               String         @id @default(uuid())
+  lotNumber        Int            @unique // 1-21
+  fertilizerTypeId String
+  fertilizerType   FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
+  totalQuantity    Float
+  dispatches       LotDispatch[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model LotDispatch {
+  id             String      @id @default(uuid())
+  lotId          String
+  lot            ShippingLot @relation(fields: [lotId], references: [id])
+  destinationId  String
+  destination    Destination @relation(fields: [destinationId], references: [id])
+  quantity       Float
+  dispatchedAt   DateTime    @default(now())
+}
+
+model PCInventory {
+  id               String         @id @default(uuid())
+  pcId             String
+  pc               PC             @relation(fields: [pcId], references: [id])
+  fertilizerTypeId String
+  fertilizerType   FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
+  quantity         Float          @default(0)
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([pcId, fertilizerTypeId])
+}
+
+model FertilizerSale {
+  id               String         @id @default(uuid())
+  farmerId         String
+  farmer           Farmer         @relation(fields: [farmerId], references: [id])
+  pcId             String
+  pc               PC             @relation(fields: [pcId], references: [id])
+  fertilizerTypeId String
+  fertilizerType   FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
+  quantity         Float
+  totalPrice       Float
+  paymentMethod    PaymentMethod
+  status           SaleStatus     @default(PAYMENT_RECEIVED)
+  
+  // Auditor/Staff Info
+  accountantId     String
+  accountant       User           @relation("Accountant", fields: [accountantId], references: [id])
+  storemanId       String?
+  storeman         User?          @relation("Storeman", fields: [storemanId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
