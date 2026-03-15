@@ -18,7 +18,7 @@ export const registerFarmer = asyncHandler(async (req: Request, res: Response) =
   } = req.body;
 
   // Cast req.files to any because of multer's complex type with fields
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+  const files = req.files as any;
   
   const photoUrl = files?.['photo']?.[0]?.path ?? null;
   const landCertificateUrl = files?.['landCertificate']?.[0]?.path ?? null;
