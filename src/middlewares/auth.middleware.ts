@@ -19,22 +19,21 @@ declare global {
 const protect = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   let token;
 
-  if (
+  // 1. Check cookies for token
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  } 
+  // 2. Fallback to Authorization header
+  else if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (token) {
     try {
-      token = req.headers.authorization.split(' ')[1];
-      if (!process.env.JWT_SECRET) {
-        res.status(500);
-        throw new Error('JWT_SECRET is not defined');
-      }
-      const secret = process.env.JWT_SECRET;
-      if (!secret) {
-        res.status(500);
-        throw new Error('JWT_SECRET is not defined');
-      }
-      const decoded = jwt.verify(token!, secret as string) as unknown as DecodedToken;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as DecodedToken;
 
       req.user = await prisma.user.findUnique({
         where: { id: decoded.id },

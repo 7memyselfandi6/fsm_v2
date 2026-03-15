@@ -2,6 +2,20 @@ import type { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import prisma from '../config/prisma.js';
 import { Role } from '@prisma/client';
+import { z } from 'zod';
+
+const updateUserSchema = z.object({
+  fullName: z.string().optional(),
+  email: z.string().email().optional(),
+  phoneNumber: z.string().optional(),
+  role: z.nativeEnum(Role).optional(),
+  regionId: z.string().uuid().optional(),
+  zoneId: z.string().uuid().optional(),
+  woredaId: z.string().uuid().optional(),
+  kebeleId: z.string().uuid().optional(),
+  unionId: z.string().uuid().optional(),
+  pcId: z.string().uuid().optional(),
+});
 
 // @desc    Get users with role-based scoping and search
 // @route   GET /api/users
@@ -77,4 +91,49 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
       totalPages: Math.ceil(total / take),
     },
   });
+});
+
+// @desc    Update user information
+// @route   PUT /api/users/:id
+// @access  Private
+export const updateUser = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const currentUser = req.user;
+  const validatedData = updateUserSchema.parse(req.body);
+
+  // Authorization checks
+  const isSuperAdmin = currentUser.role === Role.SUPER_ADMIN;
+  const isSelf = currentUser.id === id;
+
+  if (!isSuperAdmin && !isSelf) {
+    res.status(403);
+    throw new Error('Not authorized to update this user');
+  }
+
+  // Users cannot modify their own role
+  if (isSelf && !isSuperAdmin && validatedData.role) {
+    res.status(400);
+    throw new Error('Users cannot modify their own role');
+  }
+
+  const user = await prisma.user.update({
+    where: { id: id as string },
+    data: validatedData,
+    select: {
+      id: true,
+      fullName: true,
+      username: true,
+      email: true,
+      phoneNumber: true,
+      role: true,
+      regionId: true,
+      zoneId: true,
+      woredaId: true,
+      kebeleId: true,
+      unionId: true,
+      pcId: true,
+    },
+  });
+
+  res.json(user);
 });

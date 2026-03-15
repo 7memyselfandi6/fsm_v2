@@ -89,5 +89,25 @@ export const authUser = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const user = await loginUser(phoneNumber, password);
+
+  // Set cookie
+  res.cookie("token", user.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
   res.json(user);
+});
+
+// @desc    Logout user & clear cookie
+// @route   POST /api/auth/logout
+// @access  Private
+export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
+  res.cookie("token", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
+  res.status(200).json({ message: "Logged out successfully" });
 });

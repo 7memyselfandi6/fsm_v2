@@ -1,6 +1,9 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import locationRoutes from './routes/location.routes.js';
@@ -10,10 +13,25 @@ import supplyRoutes from './routes/supply.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import userRoutes from './routes/user.routes.js';
 import geoRoutes from './routes/geo.routes.js';
+import cropRoutes from './routes/crop.routes.js';
+import fertilizerRoutes from './routes/fertilizer.routes.js';
+import seasonRoutes from './routes/season.routes.js';
+import systemRoutes from './routes/system.routes.js';
 
 dotenv.config();
 
 const app = express();
+
+// Security Middlewares
+app.use(helmet());
+app.use(cookieParser());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+});
+app.use('/api/', limiter);
 
 const allowedOrigins = [
   'http://localhost:3000', // local development React/Next.js app
@@ -54,6 +72,10 @@ app.use('/api/supply', supplyRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/crops', cropRoutes);
+app.use('/api/fertilizer-types', fertilizerRoutes);
+app.use('/api/seasons', seasonRoutes);
+app.use('/api/system', systemRoutes);
 
 // Error Handler
 app.use(errorHandler);

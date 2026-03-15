@@ -1,5 +1,5 @@
 import express from 'express';
-import { authUser, register } from '../controllers/auth.controller.js';
+import { authUser, register, logoutUser } from '../controllers/auth.controller.js';
 import { protect, authorizeRole } from '../middlewares/auth.middleware.js';
 import { upload } from '../config/cloudinary.js';
 
@@ -16,5 +16,8 @@ router.post(
 
 // Route for logging in to get a JWT token
 router.post('/login', authUser);
+
+// Route for logging out
+router.post('/logout', protect, logoutUser);
 
 export default router;
