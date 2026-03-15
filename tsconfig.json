@@ -9,14 +9,11 @@
     "allowJs": true,
     "skipLibCheck": true,
     
-    // This allows TS to find @types/node, @types/express, etc.
-    "types": ["node"], 
+    // REMOVE the ["node"] and leave this out or delete the line.
+    // TypeScript will find @types/node automatically from your dependencies.
 
-    // Output settings
     "sourceMap": true,
     "declaration": true,
-
-    // Relaxed settings to ensure the build actually finishes
     "strict": false,
     "noImplicitAny": false,
     "isolatedModules": true,
