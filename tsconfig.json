@@ -9,9 +9,8 @@
     "allowJs": true,
     "skipLibCheck": true,
     
-    // REMOVE the ["node"] and leave this out or delete the line.
-    // TypeScript will find @types/node automatically from your dependencies.
-
+    // We removed "types": [] to allow auto-discovery of node, express, etc.
+    
     "sourceMap": true,
     "declaration": true,
     "strict": false,
