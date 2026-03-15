@@ -90,6 +90,41 @@ export const createKebele = asyncHandler(async (req: Request, res: Response) => 
   }
 });
 
+// @desc    Update or create a region flag
+// @route   PATCH /api/admin/regions/:id/flag
+// @access  Private (SUPER_ADMIN)
+export const updateRegionFlag = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { name, category } = req.body;
+  const imageUrl = req.file?.path;
+
+  if (!imageUrl) {
+    res.status(400);
+    throw new Error('Please upload a flag image');
+  }
+
+  try {
+    const regionalFlag = await prisma.regionalFlag.upsert({
+      where: { regionId: id },
+      update: {
+        imageUrl,
+        name: name || 'Region Flag',
+        category: category || 'Regional',
+      },
+      create: {
+        regionId: id,
+        imageUrl,
+        name: name || 'Region Flag',
+        category: category || 'Regional',
+      },
+    });
+    res.json(regionalFlag);
+  } catch (error: any) {
+    res.status(400);
+    throw new Error(error.message || 'Failed to update region flag');
+  }
+});
+
 // --- Organizational Entities ---
 
 // @desc    Create a new union

@@ -8,6 +8,8 @@ import farmerRoutes from './routes/farmer.routes.js';
 import demandRoutes from './routes/demand.routes.js';
 import supplyRoutes from './routes/supply.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import userRoutes from './routes/user.routes.js';
+import geoRoutes from './routes/geo.routes.js';
 
 dotenv.config();
 
@@ -50,6 +52,8 @@ app.use('/api/farmers', farmerRoutes);
 app.use('/api/demands', demandRoutes);
 app.use('/api/supply', supplyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/geo', geoRoutes);
 
 // Error Handler
 app.use(errorHandler);

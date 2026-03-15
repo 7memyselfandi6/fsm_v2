@@ -8,7 +8,9 @@ import {
   createUnion,
   createDestination,
   createPC,
+  updateRegionFlag,
 } from '../controllers/admin.controller.js';
+import { upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -18,6 +20,7 @@ router.use(authorizeRole(['SUPER_ADMIN']));
 
 // Geographic Hierarchy
 router.post('/regions', createRegion);
+router.patch('/regions/:id/flag', upload.single('flag'), updateRegionFlag);
 router.post('/zones', createZone);
 router.post('/woredas', createWoreda);
 router.post('/kebeles', createKebele);
