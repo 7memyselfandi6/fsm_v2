@@ -234,14 +234,14 @@ model PC {
 
 model Farmer {
   id                 String         @id @default(uuid())
-  uniqueFarmerId     String         @unique
+  uniqueFarmerId     String?        @unique
   fullName           String
   gender             String
   phoneNumber        String         @unique
   address            String
   farmAreaHectares   Float
-  photoUrl           String?
-  landCertificateUrl String?
+  photoUrl           String
+  landCertificateUrl String
   kebeleId           String
   kebele             Kebele         @relation(fields: [kebeleId], references: [id])
   demands            FarmerDemand[]

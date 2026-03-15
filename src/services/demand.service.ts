@@ -8,9 +8,9 @@ export const getFertilizerTypes = async () => await prisma.fertilizerType.findMa
 export const createFarmerDemand = async (demandData: any) => {
   return await prisma.farmerDemand.create({
     data: {
-      ...demandData,
       status: DemandStatus.PENDING,
       lockedAtLevel: LockingLevel.NONE,
+      ...demandData,
     },
   });
 };

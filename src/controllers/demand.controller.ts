@@ -2,6 +2,24 @@ import type { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import * as demandService from '../services/demand.service.js';
 import { DemandStatus, LockingLevel } from '@prisma/client';
+import crypto from 'crypto';
+import { z } from 'zod';
+
+// Validation Schema
+const demandSchema = z.object({
+  farmerId: z.string().uuid('Invalid Farmer ID'),
+  seasonId: z.string().uuid('Invalid Season ID'),
+  cropTypeId: z.string().uuid('Invalid Crop Type ID'),
+  fertilizerTypeId: z.string().uuid('Invalid Fertilizer Type ID'),
+  originalQuantity: z.number().positive('Quantity must be a positive number'),
+});
+
+// Helper to generate a human-readable unique request ID
+const generateRequestId = () => {
+  const year = new Date().getFullYear();
+  const random = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `REQ-${year}-${random}`;
+};
 
 // @desc    Get seasons
 // @route   GET /api/demands/seasons
@@ -27,25 +45,24 @@ export const getFertilizerTypes = asyncHandler(async (req: Request, res: Respons
 // @desc    Submit farmer demand
 // @route   POST /api/demands
 export const submitFarmerDemand = asyncHandler(async (req: Request, res: Response) => {
-  const {
-    farmerId,
-    seasonId,
-    cropTypeId,
-    fertilizerTypeId,
-    originalQuantity,
-  } = req.body;
+  // 1. Validation using Zod
+  const validatedBody = demandSchema.parse({
+    ...req.body,
+    originalQuantity: parseFloat(req.body.originalQuantity),
+  });
 
-  if (!farmerId || !seasonId || !cropTypeId || !fertilizerTypeId || !originalQuantity) {
-    res.status(400);
-    throw new Error('Please provide all required fields');
-  }
+  // 2. Business ID Generation
+  const requestId = generateRequestId();
 
+  // 3. Submit Demand (Initial Submission - originalQuantity set, status default to PENDING)
   const demand = await demandService.createFarmerDemand({
-    farmerId,
-    seasonId,
-    cropTypeId,
-    fertilizerTypeId,
-    originalQuantity: parseFloat(originalQuantity),
+    requestId,
+    farmerId: validatedBody.farmerId,
+    seasonId: validatedBody.seasonId,
+    cropTypeId: validatedBody.cropTypeId,
+    fertilizerTypeId: validatedBody.fertilizerTypeId,
+    originalQuantity: validatedBody.originalQuantity,
+    status: DemandStatus.PENDING,
   });
 
   res.status(201).json(demand);

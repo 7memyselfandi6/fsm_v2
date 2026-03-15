@@ -2,45 +2,94 @@ import 'multer';
 import type { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import * as farmerService from '../services/farmer.service.js';
+import crypto from 'crypto';
+import { z } from 'zod';
+import prisma from '../config/prisma.js';
+
+// Validation Schema
+const farmerSchema = z.object({
+  fullName: z.string().min(1, 'Full name is required'),
+  gender: z.enum(['Male', 'Female'], { message: 'Gender must be Male or Female' }),
+  phoneNumber: z.string().min(10, 'Valid phone number is required'),
+  address: z.string().min(1, 'Address is required'),
+  farmAreaHectares: z.number().positive('Farm area must be a positive number'),
+});
+
+// Helper to generate a human-readable unique ID
+const generateFarmerId = () => {
+  const year = new Date().getFullYear();
+  const random = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `FARM-${year}-${random}`;
+};
 
 // @desc    Register a new farmer
 // @route   POST /api/farmers
 // @access  Private (Kebele Staff)
 export const registerFarmer = asyncHandler(async (req: Request, res: Response) => {
-  const {
-    uniqueFarmerId,
-    fullName,
-    gender,
-    phoneNumber,
-    address,
-    farmAreaHectares,
-    kebeleId,
-  } = req.body;
+  // 1. Validation using Zod
+  const validatedBody = farmerSchema.parse({
+    ...req.body,
+    farmAreaHectares: parseFloat(req.body.farmAreaHectares),
+  });
 
-  // Cast req.files to any because of multer's complex type with fields
+  // 2. Extract kebeleId from authenticated user's session
+  const kebeleId = req.user?.kebeleId;
+  if (!kebeleId) {
+    res.status(403);
+    throw new Error('Not authorized to register farmers in this kebele');
+  }
+
+  // 3. Duplicate Prevention (Phone Number)
+  const existingFarmer = await prisma.farmer.findUnique({
+    where: { phoneNumber: validatedBody.phoneNumber },
+  });
+
+  if (existingFarmer) {
+    res.status(400);
+    throw new Error('A farmer with this phone number already exists');
+  }
+
+  // 4. Automatic Business ID Generation
+  const uniqueFarmerId = generateFarmerId();
+
+  // 5. File Handling
   const files = req.files as any;
-  
   const photoUrl = files?.['photo']?.[0]?.path ?? null;
   const landCertificateUrl = files?.['landCertificate']?.[0]?.path ?? null;
 
-  if (!uniqueFarmerId || !fullName || !gender || !phoneNumber || !address || !farmAreaHectares || !kebeleId) {
-    res.status(400);
-    throw new Error('Please provide all required fields');
-  }
-
+  // 6. Create Farmer
   const farmer = await farmerService.registerFarmer({
     uniqueFarmerId,
-    fullName,
-    gender,
-    phoneNumber,
-    address,
-    farmAreaHectares: parseFloat(farmAreaHectares),
+    fullName: validatedBody.fullName,
+    gender: validatedBody.gender,
+    phoneNumber: validatedBody.phoneNumber,
+    address: validatedBody.address,
+    farmAreaHectares: validatedBody.farmAreaHectares,
     photoUrl,
     landCertificateUrl,
     kebeleId,
   });
 
   res.status(201).json(farmer);
+});
+
+// @desc    Get farmer ID by phone number (Endpoint to look up generated ID)
+// @route   GET /api/farmers/lookup/:phoneNumber
+// @access  Private (Staff)
+export const getFarmerIdByPhone = asyncHandler(async (req: Request, res: Response) => {
+  const { phoneNumber } = req.params;
+  
+  const farmer = await prisma.farmer.findUnique({
+    where: { phoneNumber: phoneNumber as string },
+    select: { uniqueFarmerId: true, fullName: true },
+  });
+
+  if (!farmer) {
+    res.status(404);
+    throw new Error('Farmer not found with this phone number');
+  }
+
+  res.json(farmer);
 });
 
 // @desc    Get farmer by unique ID

@@ -7,6 +7,7 @@ import {
   getFarmerById,
   getFarmersByKebele,
   updateFarmer,
+  getFarmerIdByPhone,
 } from '../controllers/farmer.controller.js';
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.post(
   registerFarmer
 );
 
+router.get('/lookup/:phoneNumber', getFarmerIdByPhone);
 router.get('/:uniqueFarmerId', getFarmerById);
 router.get('/kebele/:kebeleId', getFarmersByKebele);
 router.put('/:id', updateFarmer);
