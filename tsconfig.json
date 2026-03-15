@@ -6,7 +6,6 @@
     "moduleResolution": "NodeNext",
     "target": "ESNext",
     "lib": ["ESNext"],
-    "types": ["node", "express", "multer", "jsonwebtoken", "cors"], 
     "esModuleInterop": true,
     "allowJs": true,
     "skipLibCheck": true,
@@ -15,7 +14,8 @@
     "strict": false,
     "noImplicitAny": false,
     "isolatedModules": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "prisma.config.ts", "scripts"]
