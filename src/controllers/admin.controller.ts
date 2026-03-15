@@ -105,14 +105,14 @@ export const updateRegionFlag = asyncHandler(async (req: Request, res: Response)
 
   try {
     const regionalFlag = await prisma.regionalFlag.upsert({
-      where: { regionId: id },
+      where: { regionId: String(id) },
       update: {
         imageUrl,
         name: name || 'Region Flag',
         category: category || 'Regional',
       },
       create: {
-        regionId: id,
+        regionId: String(id),
         imageUrl,
         name: name || 'Region Flag',
         category: category || 'Regional',
