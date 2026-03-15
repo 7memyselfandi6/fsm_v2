@@ -1,5 +1,6 @@
 import express from 'express';
-import { protect, authorizeRole } from '../middlewares/auth.middleware';
+// 1. All local file imports MUST end in .js
+import { protect, authorizeRole } from '../middlewares/auth.middleware.js';
 import {
   getSeasons,
   getCropCategories,
@@ -8,7 +9,8 @@ import {
   adjustFarmerDemand,
   lockDemands,
   getDemandDashboard,
-} from '../controllers/demand.controller';
+} from '../controllers/demand.controller.js';
+
 
 const router = express.Router();
 

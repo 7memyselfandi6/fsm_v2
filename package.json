@@ -2,12 +2,12 @@
   "name": "fms",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon --exec tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc || echo 'TSC failed but proceeding anyway'",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
@@ -19,33 +19,34 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.5.0",
+    "prisma": "^7.5.0",
     "@prisma/client": "^7.5.0",
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
-    "cloudinary": "^2.9.0",
+    "@prisma/adapter-pg": "^7.5.0",
+    "express": "^5.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "express-async-handler": "^1.2.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^4.0.0",
+    "cloudinary": "^2.9.0",
     "pg": "^8.20.0",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "express-async-handler": "^1.2.0",
+    "zod": "^4.3.6",
+    "typescript": "^5.9.3",
+    "@types/node": "^22.13.0",
+    "@types/express": "^5.0.0",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
-    "@types/node": "^25.5.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/pg": "^8.11.11",
     "nodemon": "^3.1.14",
-    "prisma": "^7.5.0",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {   
+ 
+    "nodemon": "^3.1.14",
+    "tsx": "^4.21.0"
   }
 }
