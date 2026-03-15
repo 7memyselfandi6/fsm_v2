@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+// @ts-ignore
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
