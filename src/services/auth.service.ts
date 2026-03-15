@@ -3,14 +3,10 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
 import { Role } from '@prisma/client';
 
-export const loginUser = async (identifier: string, password: string) => {
-  const user = await prisma.user.findFirst({
+export const loginUser = async (phoneNumber: string, password: string) => {
+  const user = await prisma.user.findUnique({
     where: {
-      OR: [
-        { username: identifier },
-        { email: identifier },
-        { phoneNumber: identifier },
-      ],
+      phoneNumber,
     },
     include: {
       region: true,

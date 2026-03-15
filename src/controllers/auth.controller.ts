@@ -81,13 +81,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 // @route   POST /api/auth/login
 // @access  Public
 export const authUser = asyncHandler(async (req: Request, res: Response) => {
-  const { identifier, password } = req.body;
+  const { phoneNumber, password } = req.body;
 
-  if (!identifier || !password) {
+  if (!phoneNumber || !password) {
     res.status(400);
-    throw new Error('Please provide identifier and password');
+    throw new Error('Please provide phoneNumber and password');
   }
 
-  const user = await loginUser(identifier, password);
+  const user = await loginUser(phoneNumber, password);
   res.json(user);
 });

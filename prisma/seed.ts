@@ -253,6 +253,19 @@ async function main() {
     },
   });
 
+  // 12. Create a specific Farmer for testing
+  await prisma.farmer.create({
+    data: {
+      uniqueFarmerId: 'FARM-SPEC-001',
+      fullName: 'Tesfaye Gebre',
+      gender: 'Male',
+      phoneNumber: '+251933000001',
+      address: 'Basona Werana, Kebele 01',
+      farmAreaHectares: 3.2,
+      kebeleId: kebele1.id,
+    },
+  });
+
   console.log('Seeding completed successfully!');
 }
 
