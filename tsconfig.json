@@ -8,16 +8,14 @@
     "esModuleInterop": true,
     "allowJs": true,
     "skipLibCheck": true,
-    
-    // We removed "types": [] to allow auto-discovery of node, express, etc.
-    
     "sourceMap": true,
     "declaration": true,
     "strict": false,
     "noImplicitAny": false,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "typeRoots": ["./node_modules/@types"] 
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "prisma.config.ts", "scripts"]
