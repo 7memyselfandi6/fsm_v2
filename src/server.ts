@@ -19,24 +19,27 @@
 
 // startServer();
 
-import app from './app.js';
+import express from 'express';
+import app from './app.js'; // This is your Express instance from app.ts
 import prisma from './config/prisma.js';
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
-// 1. Database connection (Optional here, prisma connects on first query)
-// But for Vercel, we usually rely on Prisma's lazy connection.
+// 1. Connect to Database first
 prisma.$connect()
-  .then(() => console.log('Database connected successfully'))
-  .catch((err) => console.error('Prisma connection error:', err));
-
-// 2. ONLY start the listener if we are NOT on Vercel
-// Vercel sets its own environment; if we are local, we need the listener.
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  .then(() => {
+    console.log('✅ Database connected successfully');
+    
+    // 2. Start the listener ONLY ONCE after DB connects
+    // We use '0.0.0.0' so Render can detect the service
+    app.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`🚀 Server is humming on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ Prisma connection error:', err);
+    process.exit(1); // Exit if DB fails so Render can retry
   });
-}
 
-// 3. CRITICAL: Export the app for Vercel's handler
-export default app;
+// Do not 'export default app' here if this is your entry point file
