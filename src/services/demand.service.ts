@@ -2,6 +2,11 @@ import prisma from '../config/prisma.js';
 import { DemandStatus, LockingLevel, Role } from '@prisma/client';
 
 export const getSeasons = async () => await prisma.season.findMany();
+export const getSeasonByName = async (name: string) => {
+  return await prisma.season.findUnique({
+    where: { name },
+  });
+};
 export const getCropCategories = async () => await prisma.cropCategory.findMany({ include: { cropTypes: true } });
 export const getFertilizerTypes = async () => await prisma.fertilizerType.findMany();
 

@@ -26,6 +26,7 @@ enum Role {
   PC_ACCOUNTANT
   PC_STOREMAN
   UNION_MEMBER
+  FARMER
 }
 
 enum MoaPosition {
@@ -174,6 +175,8 @@ model User {
   pc                PC?      @relation(fields: [pcId], references: [id])
   unionId           String?
   union             Union?   @relation(fields: [unionId], references: [id])
+  farmerId          String?  @unique
+  farmerProfile     Farmer?  @relation(fields: [farmerId], references: [id])
 
   // MoA Specific Fields
   moaPosition      MoaPosition?
@@ -240,12 +243,13 @@ model Farmer {
   phoneNumber        String         @unique
   address            String
   farmAreaHectares   Float
-  photoUrl           String
-  landCertificateUrl String
+  photoUrl           String?
+  landCertificateUrl String?
   kebeleId           String
   kebele             Kebele         @relation(fields: [kebeleId], references: [id])
   demands            FarmerDemand[]
   sales              FertilizerSale[]
+  user               User?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 }

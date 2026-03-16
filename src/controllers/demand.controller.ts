@@ -7,8 +7,7 @@ import { z } from 'zod';
 
 // Validation Schema
 const demandSchema = z.object({
-  farmerId: z.string().uuid('Invalid Farmer ID'),
-  seasonId: z.string().uuid('Invalid Season ID'),
+  seasonName: z.string().min(1, 'Season name is required'),
   cropTypeId: z.string().uuid('Invalid Crop Type ID'),
   fertilizerTypeId: z.string().uuid('Invalid Fertilizer Type ID'),
   originalQuantity: z.number().positive('Quantity must be a positive number'),
@@ -42,7 +41,7 @@ export const getFertilizerTypes = asyncHandler(async (req: Request, res: Respons
   res.json(fertilizers);
 });
 
-// @desc    Submit farmer demand
+// @desc    Submit farmer demand (Automatically populates farmerId and seasonId)
 // @route   POST /api/demands
 export const submitFarmerDemand = asyncHandler(async (req: Request, res: Response) => {
   // 1. Validation using Zod
@@ -51,14 +50,28 @@ export const submitFarmerDemand = asyncHandler(async (req: Request, res: Respons
     originalQuantity: parseFloat(req.body.originalQuantity),
   });
 
-  // 2. Business ID Generation
+  // 2. Automatic Farmer ID population from session
+  const farmerId = req.user?.farmerId;
+  if (!farmerId) {
+    res.status(401);
+    throw new Error('Authenticated user is not linked to a farmer profile');
+  }
+
+  // 3. Automatic Season ID determination based on name and context
+  const season = await demandService.getSeasonByName(validatedBody.seasonName);
+  if (!season) {
+    res.status(404);
+    throw new Error(`Season '${validatedBody.seasonName}' not found in the system`);
+  }
+
+  // 4. Business ID Generation
   const requestId = generateRequestId();
 
-  // 3. Submit Demand (Initial Submission - originalQuantity set, status default to PENDING)
+  // 5. Submit Demand
   const demand = await demandService.createFarmerDemand({
     requestId,
-    farmerId: validatedBody.farmerId,
-    seasonId: validatedBody.seasonId,
+    farmerId,
+    seasonId: season.id,
     cropTypeId: validatedBody.cropTypeId,
     fertilizerTypeId: validatedBody.fertilizerTypeId,
     originalQuantity: validatedBody.originalQuantity,
