@@ -7,10 +7,12 @@ import {
   getFertilizerTypes,
   submitFarmerDemand,
   adjustFarmerDemand,
-  lockDemands,
-  getDemandDashboard,
+  getDashboardSummary,
+  getDetailList,
+  updateDemand,
+  deleteDemand,
 } from '../controllers/demand.controller.js';
-
+import { auditLog } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -20,16 +22,22 @@ router.get('/seasons', getSeasons);
 router.get('/crops', getCropCategories);
 router.get('/fertilizers', getFertilizerTypes);
 
+// Dashboards
+router.get('/dashboard-summary', auditLog('FETCH_DEMAND_DASHBOARD'), getDashboardSummary);
+router.get('/detail-list', auditLog('FETCH_DEMAND_LIST'), getDetailList);
+
 // Submit demand (DA)
 router.post(
   '/',
+  auditLog('CREATE_DEMAND'),
   authorizeRole(['KEBELE_DA', 'KEBELE_MANAGER', 'SUPER_ADMIN']),
   submitFarmerDemand
 );
 
-// Adjust demand (Multi-level)
+// Adjust demand (Multi-level Approved quantity)
 router.put(
   '/:id/adjust',
+  auditLog('ADJUST_DEMAND'),
   authorizeRole([
     'KEBELE_MANAGER',
     'WOREDA_EXPERT',
@@ -45,21 +53,9 @@ router.put(
   adjustFarmerDemand
 );
 
-// Lock demands
-router.put(
-  '/lock',
-  authorizeRole([
-    'KEBELE_MANAGER',
-    'WOREDA_MANAGER',
-    'ZONE_MANAGER',
-    'REGION_MANAGER',
-    'MOA_MANAGER',
-    'SUPER_ADMIN',
-  ]),
-  lockDemands
-);
-
-// Dashboard
-router.get('/dashboard', getDemandDashboard);
+// Row Actions (Edit/Delete)
+router.put('/:id', auditLog('EDIT_DEMAND'), updateDemand);
+router.delete('/:id', auditLog('DELETE_DEMAND'), deleteDemand);
 
 export default router;
+

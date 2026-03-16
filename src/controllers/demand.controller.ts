@@ -81,46 +81,107 @@ export const submitFarmerDemand = asyncHandler(async (req: Request, res: Respons
   res.status(201).json(demand);
 });
 
-// @desc    Adjust farmer demand (Multi-level)
-// @route   PUT /api/demands/:id/adjust
-export const adjustFarmerDemand = asyncHandler(async (req: Request, res: Response) => {
-  const { adjustedQuantity, level } = req.body;
-  const userRole = req.user.role;
+// @desc    Get aggregated demands for dashboard summary
+// @route   GET /api/demands/dashboard-summary
+export const getDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  const dashboardData = await demandService.getDemandDashboardSummary({
+    regionId: user.regionId,
+    zoneId: user.zoneId,
+    woredaId: user.woredaId,
+    kebeleId: user.kebeleId,
+  });
 
-  const demand = await demandService.adjustFarmerDemand(
-    req.params.id as string,
-    parseFloat(adjustedQuantity),
-    level as LockingLevel,
-    userRole
-  );
+  if (!dashboardData) {
+    res.status(404);
+    throw new Error('No active season found');
+  }
 
-  res.json(demand);
+  res.json(dashboardData);
 });
 
-// @desc    Lock demand at a specific level
-// @route   PUT /api/demands/lock
-export const lockDemands = asyncHandler(async (req: Request, res: Response) => {
-  const { level, regionId, zoneId, woredaId, kebeleId } = req.body;
-  
-  const result = await demandService.lockDemands(
-    level as LockingLevel,
-    { regionId, zoneId, woredaId, kebeleId }
+// @desc    Get detailed demand list with search and scoping
+// @route   GET /api/demands/detail-list
+export const getDetailList = asyncHandler(async (req: Request, res: Response) => {
+  const { q, status, fertilizerType, page, limit } = req.query;
+  const user = req.user;
+
+  const result = await demandService.getDemandDetailList(
+    { 
+      q: q as string, 
+      status: status as string, 
+      fertilizerType: fertilizerType as string,
+      page: page ? parseInt(page as string) : 1,
+      limit: limit ? parseInt(limit as string) : 20
+    },
+    {
+      regionId: user.regionId,
+      zoneId: user.zoneId,
+      woredaId: user.woredaId,
+      kebeleId: user.kebeleId,
+      role: user.role
+    }
   );
 
   res.json(result);
 });
 
-// @desc    Get aggregated demands for dashboard
-// @route   GET /api/demands/dashboard
-export const getDemandDashboard = asyncHandler(async (req: Request, res: Response) => {
-  const { regionId, zoneId, woredaId, kebeleId } = req.query;
-  
-  const dashboardData = await demandService.getDemandDashboard({
-    regionId: regionId as string,
-    zoneId: zoneId as string,
-    woredaId: woredaId as string,
-    kebeleId: kebeleId as string,
+// @desc    Adjust farmer demand (Approved quantity)
+// @route   PUT /api/demands/:id/adjust
+export const adjustFarmerDemand = asyncHandler(async (req: Request, res: Response) => {
+  const { adjustedQuantity, level } = req.body;
+  const { id } = req.params;
+  const user = req.user;
+
+  // Determine adjustment level if not provided
+  let targetLevel = level as LockingLevel;
+  if (!targetLevel) {
+    if (user.role.includes('MOA')) targetLevel = LockingLevel.MOA;
+    else if (user.role.includes('REGION')) targetLevel = LockingLevel.REGION;
+    else if (user.role.includes('ZONE')) targetLevel = LockingLevel.ZONE;
+    else if (user.role.includes('WOREDA')) targetLevel = LockingLevel.WOREDA;
+    else if (user.role.includes('KEBELE')) targetLevel = LockingLevel.KEBELE;
+  }
+
+  const demand = await demandService.adjustFarmerDemand(
+    id as string,
+    parseFloat(adjustedQuantity),
+    targetLevel,
+    user.role
+  );
+
+  res.json(demand);
+});
+
+// @desc    Edit a demand (Kebele level edit while PENDING)
+// @route   PUT /api/demands/:id
+export const updateDemand = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { originalQuantity, fertilizerTypeId } = req.body;
+
+  const demand = await demandService.getDemandById(id);
+  if (!demand) {
+    res.status(404);
+    throw new Error('Demand not found');
+  }
+
+  if (demand.status !== DemandStatus.PENDING) {
+    res.status(403);
+    throw new Error('Cannot edit a demand that is not PENDING');
+  }
+
+  const updatedDemand = await demandService.updateFarmerDemand(id, {
+    originalQuantity: originalQuantity ? parseFloat(originalQuantity) : undefined,
+    fertilizerTypeId: fertilizerTypeId,
   });
 
-  res.json(dashboardData);
+  res.json(updatedDemand);
+});
+
+// @desc    Delete a demand (Only if PENDING)
+// @route   DELETE /api/demands/:id
+export const deleteDemand = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  await demandService.deleteFarmerDemand(id);
+  res.json({ message: 'Demand deleted successfully' });
 });
