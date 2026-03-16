@@ -28,7 +28,7 @@ export const createBatchFarmerDemands = async (data: any) => {
 
         await tx.farmerDemand.create({
           data: {
-            requestId: generateRequestId(),
+            id: generateRequestId(),
             farmerId,
             seasonId,
             cropTypeId,
