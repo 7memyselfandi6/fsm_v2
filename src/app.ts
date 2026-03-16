@@ -17,6 +17,8 @@ import cropRoutes from './routes/crop.routes.js';
 import fertilizerRoutes from './routes/fertilizer.routes.js';
 import seasonRoutes from './routes/season.routes.js';
 import systemRoutes from './routes/system.routes.js';
+import woredaRoutes from './routes/woreda.routes.js';
+import zoneRoutes from './routes/zone.routes.js';
 
 dotenv.config();
 
@@ -76,6 +78,8 @@ app.use('/api/crops', cropRoutes);
 app.use('/api/fertilizer-types', fertilizerRoutes);
 app.use('/api/seasons', seasonRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/woreda', woredaRoutes);
+app.use('/api/zone', zoneRoutes);
 
 // Error Handler
 app.use(errorHandler);

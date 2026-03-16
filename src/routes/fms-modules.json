@@ -1,0 +1,162 @@
+{
+	"info": {
+		"name": "FMS Woreda & Zone Modules",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Woreda Module",
+			"item": [
+				{
+					"name": "Woreda Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/woreda/dashboard-summary?seasonName=Meher",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "woreda", "dashboard-summary"],
+							"query": [
+								{ "key": "seasonName", "value": "Meher" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Woreda Detail List",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/woreda/detail-list?page=1&limit=10&status=PENDING&kebeleId=UUID",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "woreda", "detail-list"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" },
+								{ "key": "status", "value": "PENDING" },
+								{ "key": "kebeleId", "value": "UUID" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Woreda Adjustment Table",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/woreda/adjustment-table",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "woreda", "adjustment-table"]
+						}
+					}
+				},
+				{
+					"name": "Woreda Lock/Unlock",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"kebeleId\": \"UUID\",\n  \"lock\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/woreda/lock",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "woreda", "lock"]
+						}
+					}
+				},
+				{
+					"name": "Woreda Submit Adjustments",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fertilizerTypeId\": \"UUID\",\n  \"adjustments\": [\n    { \"kebeleId\": \"UUID\", \"quantity\": 16 },\n    { \"kebeleId\": \"UUID\", \"quantity\": 2 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/woreda/adjust",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "woreda", "adjust"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Zone Module",
+			"item": [
+				{
+					"name": "Zone Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/zone/dashboard-summary",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "zone", "dashboard-summary"]
+						}
+					}
+				},
+				{
+					"name": "Zone Detail List",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/zone/detail-list?page=1&limit=10&woredaId=UUID",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "zone", "detail-list"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "limit", "value": "10" },
+								{ "key": "woredaId", "value": "UUID" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Zone Adjustment Table",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/zone/adjustment-table",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "zone", "adjustment-table"]
+						}
+					}
+				},
+				{
+					"name": "Zone Lock/Unlock",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"woredaId\": \"UUID\",\n  \"lock\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/zone/lock",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "zone", "lock"]
+						}
+					}
+				},
+				{
+					"name": "Zone Submit Adjustments",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fertilizerTypeId\": \"UUID\",\n  \"adjustments\": [\n    { \"woredaId\": \"UUID\", \"quantity\": 50 },\n    { \"woredaId\": \"UUID\", \"quantity\": 50 }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/zone/adjust",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "zone", "adjust"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

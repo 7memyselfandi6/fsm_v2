@@ -9,6 +9,12 @@ import {
   adjustFarmerDemand,
   getDashboardSummary,
   getDetailList,
+  getWoredaSummary,
+  getWoredaDetailList,
+  getWoredaAdjustmentTable,
+  woredaAdjust,
+  getZoneSummary,
+  getZoneAdjustmentTable,
   updateDemand,
   deleteDemand,
 } from '../controllers/demand.controller.js';
@@ -32,6 +38,46 @@ router.get('/fertilizers', getFertilizerTypes);
 // Dashboards
 router.get('/dashboard-summary', auditLog('FETCH_DEMAND_DASHBOARD'), getDashboardSummary);
 router.get('/detail-list', auditLog('FETCH_DEMAND_LIST'), getDetailList);
+
+// Woreda Module
+router.get(
+  '/woreda-summary',
+  auditLog('FETCH_WOREDA_SUMMARY'),
+  authorizeRole(['WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']),
+  getWoredaSummary
+);
+router.get(
+  '/woreda-detail-list',
+  auditLog('FETCH_WOREDA_DETAIL_LIST'),
+  authorizeRole(['WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']),
+  getWoredaDetailList
+);
+router.get(
+  '/woreda-adjustment-table',
+  auditLog('FETCH_WOREDA_ADJUSTMENT_TABLE'),
+  authorizeRole(['WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']),
+  getWoredaAdjustmentTable
+);
+router.patch(
+  '/woreda-adjust',
+  auditLog('WOREDA_ADJUST_DEMAND'),
+  authorizeRole(['WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']),
+  woredaAdjust
+);
+
+// Zone Module
+router.get(
+  '/zone-summary',
+  auditLog('FETCH_ZONE_SUMMARY'),
+  authorizeRole(['ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']),
+  getZoneSummary
+);
+router.get(
+  '/zone-adjustment-table',
+  auditLog('FETCH_ZONE_ADJUSTMENT_TABLE'),
+  authorizeRole(['ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']),
+  getZoneAdjustmentTable
+);
 
 // Adjust demand (Multi-level Approved quantity)
 router.put(

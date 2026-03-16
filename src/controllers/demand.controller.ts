@@ -105,7 +105,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
     }
   );
 
-  if (!dashboardData) {
+  if (dashboardData === null || dashboardData === undefined) {
     res.status(404);
     throw new Error('No active season found');
   }
@@ -137,6 +137,66 @@ export const getDetailList = asyncHandler(async (req: Request, res: Response) =>
     }
   );
 
+  res.json(result);
+});
+
+// @desc    Get Woreda-level summary
+// @route   GET /api/demands/woreda-summary
+export const getWoredaSummary = asyncHandler(async (req: Request, res: Response) => {
+  const result = await demandService.getWoredaSummary(req.user);
+  res.json(result);
+});
+
+// @desc    Get Woreda-level detailed list (Farmer requests)
+// @route   GET /api/demands/woreda-detail-list
+export const getWoredaDetailList = asyncHandler(async (req: Request, res: Response) => {
+  const { q, status, fertilizerType, kebeleId, page, limit } = req.query;
+  const user = req.user;
+
+  const result = await demandService.getDemandDetailList(
+    {
+      q: q as string,
+      status: status as string,
+      fertilizerType: fertilizerType as string,
+      kebeleId: kebeleId as string,
+      page: page ? parseInt(page as string) : 1,
+      limit: limit ? parseInt(limit as string) : 10
+    },
+    {
+      woredaId: user.woredaId,
+      regionId: user.regionId,
+      role: user.role
+    }
+  );
+
+  res.json(result);
+});
+
+// @desc    Get Woreda adjustment table
+// @route   GET /api/demands/woreda-adjustment-table
+export const getWoredaAdjustmentTable = asyncHandler(async (req: Request, res: Response) => {
+  const result = await demandService.getWoredaAdjustmentTable(req.user);
+  res.json(result);
+});
+
+// @desc    Adjust Woreda-level demand (Distribute across Kebeles)
+// @route   PATCH /api/demands/woreda-adjust
+export const woredaAdjust = asyncHandler(async (req: Request, res: Response) => {
+  const result = await demandService.woredaAdjust(req.body, req.user);
+  res.json(result);
+});
+
+// @desc    Get Zone-level summary
+// @route   GET /api/demands/zone-summary
+export const getZoneSummary = asyncHandler(async (req: Request, res: Response) => {
+  const result = await demandService.getZoneSummary(req.user);
+  res.json(result);
+});
+
+// @desc    Get Zone-level adjustment table (Shows Woredas)
+// @route   GET /api/demands/zone-adjustment-table
+export const getZoneAdjustmentTable = asyncHandler(async (req: Request, res: Response) => {
+  const result = await demandService.getZoneAdjustmentTable(req.user);
   res.json(result);
 });
 
@@ -174,7 +234,7 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
   const { originalQuantity, fertilizerTypeId } = req.body;
 
   const demand = await demandService.getDemandById(id as string);
-  if (!demand) {
+  if (demand === null) {
     res.status(404);
     throw new Error('Demand not found');
   }
@@ -184,7 +244,7 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
     throw new Error('Cannot edit a demand that is not PENDING');
   }
 
-  const updatedDemand = await demandService.updateFarmerDemand(id as string, {
+  const updatedDemand = await demandService.deleteFarmerDemand(id as string, {
     originalQuantity: originalQuantity ? parseFloat(originalQuantity) : undefined,
     fertilizerTypeId: fertilizerTypeId,
   });
@@ -196,6 +256,9 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
 // @route   DELETE /api/demands/:id
 export const deleteDemand = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await demandService.deleteFarmerDemand(id as string);
+  await demandService.deleteFarmerDemand(id as string, {
+    originalQuantity: 0,
+    fertilizerTypeId: undefined
+  });
   res.json({ message: 'Demand deleted successfully' });
 });
