@@ -159,7 +159,7 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
   const { id } = req.params;
   const { originalQuantity, fertilizerTypeId } = req.body;
 
-  const demand = await demandService.getDemandById(id);
+  const demand = await demandService.getDemandById(id as string);
   if (!demand) {
     res.status(404);
     throw new Error('Demand not found');
@@ -170,7 +170,7 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
     throw new Error('Cannot edit a demand that is not PENDING');
   }
 
-  const updatedDemand = await demandService.updateFarmerDemand(id, {
+  const updatedDemand = await demandService.updateFarmerDemand(id as string, {
     originalQuantity: originalQuantity ? parseFloat(originalQuantity) : undefined,
     fertilizerTypeId: fertilizerTypeId,
   });
@@ -182,6 +182,6 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
 // @route   DELETE /api/demands/:id
 export const deleteDemand = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await demandService.deleteFarmerDemand(id);
+  await demandService.deleteFarmerDemand(id as string);
   res.json({ message: 'Demand deleted successfully' });
 });
