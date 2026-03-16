@@ -39,3 +39,9 @@ export const updateFarmer = async (id: string, updateData: any) => {
     data: updateData,
   });
 };
+
+export const deleteFarmer = async (id: string) => {
+  return await prisma.farmer.delete({
+    where: { id },
+  });
+};

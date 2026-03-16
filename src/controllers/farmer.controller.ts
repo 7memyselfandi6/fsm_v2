@@ -96,7 +96,15 @@ export const getFarmerIdByPhone = asyncHandler(async (req: Request, res: Respons
 // @route   GET /api/farmers/:uniqueFarmerId
 // @access  Private (Kebele Staff)
 export const getFarmerById = asyncHandler(async (req: Request, res: Response) => {
-  const farmer = await farmerService.getFarmerById(req.params.uniqueFarmerId as string);
+  const { uniqueFarmerId } = req.params;
+
+  // Input Validation
+  if (!uniqueFarmerId || typeof uniqueFarmerId !== 'string') {
+    res.status(400);
+    throw new Error('Valid uniqueFarmerId is required');
+  }
+
+  const farmer = await farmerService.getFarmerById(uniqueFarmerId);
 
   if (!farmer) {
     res.status(404);
@@ -116,7 +124,7 @@ export const getFarmersByKebele = asyncHandler(async (req: Request, res: Respons
 
 // @desc    Update farmer details
 // @route   PUT /api/farmers/:id
-// @access  Private (Kebele Staff)
+// @access  Private (SUPER_ADMIN)
 export const updateFarmer = asyncHandler(async (req: Request, res: Response) => {
   const farmerId = req.params.id as string;
   if (!farmerId) {
@@ -125,4 +133,17 @@ export const updateFarmer = asyncHandler(async (req: Request, res: Response) => 
   }
   const farmer = await farmerService.updateFarmer(farmerId, req.body);
   res.json(farmer);
+});
+
+// @desc    Delete farmer record
+// @route   DELETE /api/farmers/:id
+// @access  Private (SUPER_ADMIN)
+export const deleteFarmer = asyncHandler(async (req: Request, res: Response) => {
+  const farmerId = req.params.id as string;
+  if (!farmerId) {
+    res.status(400);
+    throw new Error('Farmer ID is required');
+  }
+  await farmerService.deleteFarmer(farmerId);
+  res.status(200).json({ message: 'Farmer record deleted successfully' });
 });
