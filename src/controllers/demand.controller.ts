@@ -5,12 +5,14 @@ import { DemandStatus, LockingLevel } from '@prisma/client';
 import crypto from 'crypto';
 import { z } from 'zod';
 
-// Validation Schema
-const demandSchema = z.object({
+// Validation Schema for Bulk Submission
+const bulkDemandSchema = z.object({
   seasonName: z.string().min(1, 'Season name is required'),
-  cropTypeId: z.string().uuid('Invalid Crop Type ID'),
-  fertilizerTypeId: z.string().uuid('Invalid Fertilizer Type ID'),
-  originalQuantity: z.number().positive('Quantity must be a positive number'),
+  cropTypeIds: z.array(z.string().uuid('Invalid Crop Type ID')).min(1, 'At least one crop must be selected'),
+  fertilizers: z.array(z.object({
+    fertilizerTypeId: z.string().uuid('Invalid Fertilizer Type ID'),
+    quantity: z.number().positive('Quantity must be a positive number'),
+  })).min(1, 'At least one fertilizer type must be specified'),
 });
 
 // Helper to generate a human-readable unique request ID
@@ -41,44 +43,39 @@ export const getFertilizerTypes = asyncHandler(async (req: Request, res: Respons
   res.json(fertilizers);
 });
 
-// @desc    Submit farmer demand (Automatically populates farmerId and seasonId)
+// @desc    Submit farmer demands in bulk
 // @route   POST /api/demands
 export const submitFarmerDemand = asyncHandler(async (req: Request, res: Response) => {
   // 1. Validation using Zod
-  const validatedBody = demandSchema.parse({
-    ...req.body,
-    originalQuantity: parseFloat(req.body.originalQuantity),
-  });
+  const validatedBody = bulkDemandSchema.parse(req.body);
 
-  // 2. Automatic Farmer ID population from session
+  // 2. Context Extraction (farmerId from session)
   const farmerId = req.user?.farmerId;
   if (!farmerId) {
     res.status(401);
     throw new Error('Authenticated user is not linked to a farmer profile');
   }
 
-  // 3. Automatic Season ID determination based on name and context
+  // 3. Season Resolution
   const season = await demandService.getSeasonByName(validatedBody.seasonName);
   if (!season) {
     res.status(404);
-    throw new Error(`Season '${validatedBody.seasonName}' not found in the system`);
+    throw new Error(`Season '${validatedBody.seasonName}' not found`);
   }
 
-  // 4. Business ID Generation
-  const requestId = generateRequestId();
-
-  // 5. Submit Demand
-  const demand = await demandService.createFarmerDemand({
-    requestId,
+  // 4. Data Mapping & Service Call
+  const result = await demandService.createBatchFarmerDemands({
     farmerId,
     seasonId: season.id,
-    cropTypeId: validatedBody.cropTypeId,
-    fertilizerTypeId: validatedBody.fertilizerTypeId,
-    originalQuantity: validatedBody.originalQuantity,
-    status: DemandStatus.PENDING,
+    cropTypeIds: validatedBody.cropTypeIds,
+    fertilizers: validatedBody.fertilizers,
+    generateRequestId // Pass generator function
   });
 
-  res.status(201).json(demand);
+  res.status(201).json({
+    success: true,
+    count: result.count
+  });
 });
 
 // @desc    Get aggregated demands for dashboard summary

@@ -10,6 +10,42 @@ export const getSeasonByName = async (name: string) => {
 export const getCropCategories = async () => await prisma.cropCategory.findMany({ include: { cropTypes: true } });
 export const getFertilizerTypes = async () => await prisma.fertilizerType.findMany();
 
+export const createBatchFarmerDemands = async (data: any) => {
+  const { farmerId, seasonId, cropTypeIds, fertilizers, generateRequestId } = data;
+
+  return await prisma.$transaction(async (tx) => {
+    let createdCount = 0;
+
+    for (const cropTypeId of cropTypeIds) {
+      // Verify crop type exists
+      const cropType = await tx.cropType.findUnique({ where: { id: cropTypeId } });
+      if (!cropType) throw new Error(`Crop type ID ${cropTypeId} not found`);
+
+      for (const fert of fertilizers) {
+        // Verify fertilizer type exists
+        const fertType = await tx.fertilizerType.findUnique({ where: { id: fert.fertilizerTypeId } });
+        if (!fertType) throw new Error(`Fertilizer type ID ${fert.fertilizerTypeId} not found`);
+
+        await tx.farmerDemand.create({
+          data: {
+            requestId: generateRequestId(),
+            farmerId,
+            seasonId,
+            cropTypeId,
+            fertilizerTypeId: fert.fertilizerTypeId,
+            originalQuantity: fert.quantity,
+            status: DemandStatus.PENDING,
+            lockedAtLevel: LockingLevel.NONE,
+          },
+        });
+        createdCount++;
+      }
+    }
+
+    return { count: createdCount };
+  });
+};
+
 export const createFarmerDemand = async (demandData: any) => {
   return await prisma.farmerDemand.create({
     data: {

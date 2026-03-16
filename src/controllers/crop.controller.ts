@@ -68,8 +68,8 @@ export const updateCrop = asyncHandler(async (req: Request, res: Response) => {
   const validatedData = cropSchema.partial().parse(req.body);
 
   const crop = await prisma.cropType.update({
-    where: { id: id as string },
     data: validatedData,
+    where: undefined
   });
 
   res.json(crop);
