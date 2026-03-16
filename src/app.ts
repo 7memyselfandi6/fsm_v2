@@ -35,7 +35,7 @@ app.use('/api/', limiter);
 
 const allowedOrigins = [
   'http://localhost:3000', // local development React/Next.js app
-  'https://your-frontend-domain.com' // future production frontend URL
+  'https://fertilizer-ten.vercel.app' // future production frontend URL
 ];
 
 // Middlewares
