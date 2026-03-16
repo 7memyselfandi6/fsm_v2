@@ -133,7 +133,19 @@ export const getDemandDashboardSummary = async (params: any, scope: any) => {
   if (seasonName) {
     activeSeason = await prisma.season.findUnique({ where: { name: seasonName } });
   } else {
-    activeSeason = await prisma.season.findFirst({ orderBy: { createdAt: 'desc' } });
+    // If no season specified, try to find the one that has the most demands first
+    const mostActiveSeason = await prisma.farmerDemand.groupBy({
+      by: ['seasonId'],
+      _count: { _all: true },
+      orderBy: { _count: { seasonId: 'desc' } },
+      take: 1
+    });
+
+    if (mostActiveSeason.length > 0) {
+      activeSeason = await prisma.season.findUnique({ where: { id: mostActiveSeason[0].seasonId } });
+    } else {
+      activeSeason = await prisma.season.findFirst({ orderBy: { createdAt: 'desc' } });
+    }
   }
 
   if (!activeSeason) return null;
@@ -150,7 +162,7 @@ export const getDemandDashboardSummary = async (params: any, scope: any) => {
 
   // 3. KPI Metrics (Top Cards)
   // Fetch everything needed for KPIs in parallel
-  const [kebeleCount, farmerCount, demandAgg, allDemands] = await Promise.all([
+  const [kebeleGroups, farmerCount, demandAgg, allDemands] = await Promise.all([
    
     // totalKebeles: Group by kebeleId to get unique IDs, then we take the length
   prisma.farmer.groupBy({
@@ -221,7 +233,7 @@ export const getDemandDashboardSummary = async (params: any, scope: any) => {
   });
 
   const metrics = {
-    totalKebeles: kebeleCount,
+    totalKebeles: kebeleGroups.length,
     totalFarmers: farmerCount,
     totalDemand: demandAgg._sum.originalQuantity || 0,
     totalAllocated: totalAllocated,
