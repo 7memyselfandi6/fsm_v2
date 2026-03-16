@@ -35,32 +35,76 @@ export const getFertilizerTypes = async () => await prisma.fertilizerType.findMa
 export const getWoredaSummary = async (user: any, seasonName?: string) => {
   const { woredaId, regionId, role } = user;
   const [woreda, activeSeason, flag] = await Promise.all([
-    prisma.woreda.findUnique({ where: { id: woredaId } }),
+    prisma.woreda.findUnique({ 
+      where: { id: woredaId },
+      include: { kebeles: true }
+    }),
     getActiveSeason(seasonName),
     role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
-  if (!activeSeason) return null;
+  if (!activeSeason || !woreda) return null;
 
   const demands = await prisma.farmerDemand.findMany({
-    where: { seasonId: activeSeason.id, farmer: { kebele: { woredaId } } },
-    include: { fertilizerType: true }
+    where: { 
+      seasonId: activeSeason.id, 
+      farmer: { kebele: { woredaId } } 
+    },
+    include: { 
+      fertilizerType: true,
+      farmer: { select: { kebeleId: true } }
+    }
   });
 
-  const summaryMap: Record<string, number> = {};
-  let totalAmount = 0;
+  // Calculate Woreda Summary
+  const woredaSummaryMap: Record<string, number> = {};
+  let woredaTotalAmount = 0;
+
+  // Group by Kebele
+  const kebeleSummaries: Record<string, { name: string, totalAmount: number, fertilizerBreakdown: any[] }> = {};
+  
+  // Initialize Kebele Summaries
+  woreda.kebeles.forEach(k => {
+    kebeleSummaries[k.id] = { name: k.name, totalAmount: 0, fertilizerBreakdown: [] };
+  });
+
+  const kebeleFertilizerMaps: Record<string, Record<string, number>> = {};
+
   demands.forEach(d => {
     const type = d.fertilizerType.name;
-    summaryMap[type] = (summaryMap[type] || 0) + d.originalQuantity;
-    totalAmount += d.originalQuantity;
+    const kid = d.farmer.kebeleId;
+
+    // Woreda aggregation
+    woredaSummaryMap[type] = (woredaSummaryMap[type] || 0) + d.originalQuantity;
+    woredaTotalAmount += d.originalQuantity;
+
+    // Kebele aggregation
+    if (kebeleSummaries[kid]) {
+      kebeleSummaries[kid].totalAmount += d.originalQuantity;
+      if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
+      kebeleFertilizerMaps[kid][type] = (kebeleFertilizerMaps[kid][type] || 0) + d.originalQuantity;
+    }
+  });
+
+  // Convert Kebele maps to breakdowns
+  Object.keys(kebeleSummaries).forEach(kid => {
+    const fertMap = kebeleFertilizerMaps[kid] || {};
+    kebeleSummaries[kid].fertilizerBreakdown = Object.entries(fertMap).map(([type, amount]) => ({
+      type,
+      amount: `${amount} Qt`
+    }));
   });
 
   return {
-    woredaName: woreda?.name,
+    woredaName: woreda.name,
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
-    totalAmount: `${totalAmount} Qt`,
-    fertilizerBreakdown: Object.entries(summaryMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` }))
+    totalAmount: `${woredaTotalAmount} Qt`,
+    fertilizerBreakdown: Object.entries(woredaSummaryMap).map(([type, amount]) => ({ 
+      type, 
+      amount: `${amount} Qt` 
+    })),
+    kebeles: Object.values(kebeleSummaries)
   };
 };
 
@@ -155,32 +199,112 @@ export const woredaLock = async (data: any, user: any) => {
 export const getZoneSummary = async (user: any, seasonName?: string) => {
   const { zoneId, regionId, role } = user;
   const [zone, activeSeason, flag] = await Promise.all([
-    prisma.zone.findUnique({ where: { id: zoneId } }),
+    prisma.zone.findUnique({ 
+      where: { id: zoneId },
+      include: { 
+        woredas: {
+          include: { kebeles: true }
+        }
+      }
+    }),
     getActiveSeason(seasonName),
     role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
-  if (!activeSeason) return null;
+  if (!activeSeason || !zone) return null;
 
   const demands = await prisma.farmerDemand.findMany({
-    where: { seasonId: activeSeason.id, farmer: { kebele: { woreda: { zoneId } } } },
-    include: { fertilizerType: true }
+    where: { 
+      seasonId: activeSeason.id, 
+      farmer: { kebele: { woreda: { zoneId } } } 
+    },
+    include: { 
+      fertilizerType: true,
+      farmer: { 
+        include: { 
+          kebele: { 
+            include: { woreda: true } 
+          } 
+        } 
+      }
+    }
   });
 
-  const summaryMap: Record<string, number> = {};
-  let totalAmount = 0;
+  // Aggregators
+  const zoneSummaryMap: Record<string, number> = {};
+  let zoneTotalAmount = 0;
+
+  // Hierarchical Structure: Woreda -> Kebele -> Fertilizer Summary
+  const woredaData: Record<string, { 
+    name: string, 
+    totalAmount: number, 
+    fertilizerBreakdown: any[], 
+    kebeles: Record<string, { name: string, totalAmount: number, fertilizerBreakdown: any[] }> 
+  }> = {};
+
+  // Initialize Structure
+  zone.woredas.forEach(w => {
+    woredaData[w.id] = { name: w.name, totalAmount: 0, fertilizerBreakdown: [], kebeles: {} };
+    w.kebeles.forEach(k => {
+      woredaData[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, fertilizerBreakdown: [] };
+    });
+  });
+
+  const woredaFertilizerMaps: Record<string, Record<string, number>> = {};
+  const kebeleFertilizerMaps: Record<string, Record<string, number>> = {};
+
   demands.forEach(d => {
     const type = d.fertilizerType.name;
-    summaryMap[type] = (summaryMap[type] || 0) + d.originalQuantity;
-    totalAmount += d.originalQuantity;
+    const kid = d.farmer.kebeleId;
+    const wid = d.farmer.kebele.woredaId;
+
+    // Zone aggregation
+    zoneSummaryMap[type] = (zoneSummaryMap[type] || 0) + d.originalQuantity;
+    zoneTotalAmount += d.originalQuantity;
+
+    // Woreda aggregation
+    if (woredaData[wid]) {
+      woredaData[wid].totalAmount += d.originalQuantity;
+      if (!woredaFertilizerMaps[wid]) woredaFertilizerMaps[wid] = {};
+      woredaFertilizerMaps[wid][type] = (woredaFertilizerMaps[wid][type] || 0) + d.originalQuantity;
+
+      // Kebele aggregation
+      if (woredaData[wid].kebeles[kid]) {
+        woredaData[wid].kebeles[kid].totalAmount += d.originalQuantity;
+        if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
+        kebeleFertilizerMaps[kid][type] = (kebeleFertilizerMaps[kid][type] || 0) + d.originalQuantity;
+      }
+    }
+  });
+
+  // Final Transformation
+  const woredas = Object.entries(woredaData).map(([wid, w]) => {
+    const woredaFertMap = woredaFertilizerMaps[wid] || {};
+    return {
+      woredaName: w.name,
+      totalAmount: `${w.totalAmount} Qt`,
+      fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+      kebeles: Object.entries(w.kebeles).map(([kid, k]) => {
+        const kebeleFertMap = kebeleFertilizerMaps[kid] || {};
+        return {
+          kebeleName: k.name,
+          totalAmount: `${k.totalAmount} Qt`,
+          fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` }))
+        };
+      })
+    };
   });
 
   return {
-    zoneName: zone?.name,
+    zoneName: zone.name,
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
-    totalAmount: `${totalAmount} Qt`,
-    fertilizerBreakdown: Object.entries(summaryMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` }))
+    totalAmount: `${zoneTotalAmount} Qt`,
+    fertilizerBreakdown: Object.entries(zoneSummaryMap).map(([type, amount]) => ({ 
+      type, 
+      amount: `${amount} Qt` 
+    })),
+    woredas
   };
 };
 
