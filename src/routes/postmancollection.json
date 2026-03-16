@@ -1,0 +1,203 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+		"name": "Fertilizer Management System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Fetch Pre-populated Data",
+			"item": [
+				{
+					"name": "Get All Crop Types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/crops",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"crops"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Seasons",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/seasons",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"seasons"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Fertilizer Types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/fertilizer-types",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"fertilizer-types"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Submit Fertilizer Demand",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{AUTH_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"farmerId\": \"{{FARMER_ID}}\",\n    \"seasonId\": \"{{SEASON_ID}}\",\n    \"cropTypeIds\": [\n        \"{{CROP_ID_WHEAT}}\",\n        \"{{CROP_ID_MAIZE}}\"\n    ],\n    \"fertilizers\": [\n        {\n            \"fertilizerTypeId\": \"{{FERTILIZER_ID_UREA}}\",\n            \"quantity\": 1.5\n        },\n        {\n            \"fertilizerTypeId\": \"{{FERTILIZER_ID_DAP}}\",\n            \"quantity\": 2.0\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/demands",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"demands"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Example Success Response",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "...",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/api/demands",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"demands"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"count\": 4\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:5000"
+		},
+		{
+			"key": "AUTH_TOKEN",
+			"value": "your_jwt_token_here"
+		},
+		{
+			"key": "FARMER_ID",
+			"value": "replace_with_farmer_id"
+		},
+		{
+			"key": "SEASON_ID",
+			"value": "replace_with_season_id"
+		},
+		{
+			"key": "CROP_ID_WHEAT",
+			"value": "replace_with_wheat_id"
+		},
+		{
+			"key": "CROP_ID_MAIZE",
+			"value": "replace_with_maize_id"
+		},
+		{
+			"key": "FERTILIZER_ID_UREA",
+			"value": "replace_with_urea_id"
+		},
+		{
+			"key": "FERTILIZER_ID_DAP",
+			"value": "replace_with_dap_id"
+		}
+	]
+}

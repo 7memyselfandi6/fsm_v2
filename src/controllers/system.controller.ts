@@ -37,3 +37,40 @@ export const getSystemDates = asyncHandler(async (req: Request, res: Response) =
 
   res.json(results);
 });
+
+// @desc    Initialize demand collection form data
+// @route   GET /api/system/init-demand-form
+// @access  Private
+export const getInitDemandFormData = asyncHandler(async (req: Request, res: Response) => {
+  const [seasons, cropCategories, fertilizerTypes] = await Promise.all([
+    prisma.season.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true }
+    }),
+    prisma.cropCategory.findMany({
+      include: {
+        cropTypes: {
+          select: { id: true, name: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.fertilizerType.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true }
+    })
+  ]);
+
+  // Transform crop categories into the requested nested format
+  const categorizedCrops: Record<string, any[]> = {};
+  cropCategories.forEach(category => {
+    categorizedCrops[category.name] = category.cropTypes;
+  });
+
+  res.json({
+    seasons,
+    crops: categorizedCrops,
+    fertilizerTypes: fertilizerTypes.map(f => ({ ...f, unit: 'Qt' }))
+  });
+});
+

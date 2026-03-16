@@ -1,0 +1,17 @@
+{
+    "seasonName": "Mehir",
+    "cropTypeIds": [
+        "{{CROP_ID_WHEAT}}",
+        "{{CROP_ID_MAIZE}}"
+    ],
+    "fertilizers": [
+        {
+            "fertilizerTypeId": "{{FERTILIZER_ID_UREA}}",
+            "quantity": 1.5
+        },
+        {
+            "fertilizerTypeId": "{{FERTILIZER_ID_DAP}}",
+            "quantity": 2.0
+        }
+    ]
+}
