@@ -87,13 +87,23 @@ export const submitFarmerDemand = asyncHandler(async (req: Request, res: Respons
 // @desc    Get aggregated demands for dashboard summary
 // @route   GET /api/demands/dashboard-summary
 export const getDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const { page, limit, pageSize, status, year, seasonName } = req.query;
   const user = req.user;
-  const dashboardData = await demandService.getDemandDashboardSummary({
-    regionId: user.regionId,
-    zoneId: user.zoneId,
-    woredaId: user.woredaId,
-    kebeleId: user.kebeleId,
-  });
+
+  const dashboardData = await demandService.getDemandDashboardSummary(
+    {
+      page: page ? parseInt(page as string) : 1,
+      limit: (limit || pageSize) ? parseInt((limit || pageSize) as string) : 5,
+      status: status as string,
+      seasonName: (seasonName || year) as string,
+    },
+    {
+      regionId: user.regionId,
+      zoneId: user.zoneId,
+      woredaId: user.woredaId,
+      kebeleId: user.kebeleId,
+    }
+  );
 
   if (!dashboardData) {
     res.status(404);
@@ -106,7 +116,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
 // @desc    Get detailed demand list with search and scoping
 // @route   GET /api/demands/detail-list
 export const getDetailList = asyncHandler(async (req: Request, res: Response) => {
-  const { q, status, fertilizerType, page, limit } = req.query;
+  const { q, status, fertilizerType, page, limit, pageSize, year, seasonName } = req.query;
   const user = req.user;
 
   const result = await demandService.getDemandDetailList(
@@ -115,7 +125,8 @@ export const getDetailList = asyncHandler(async (req: Request, res: Response) =>
       status: status as string, 
       fertilizerType: fertilizerType as string,
       page: page ? parseInt(page as string) : 1,
-      limit: limit ? parseInt(limit as string) : 20
+      limit: (limit || pageSize) ? parseInt((limit || pageSize) as string) : 10,
+      seasonName: (seasonName || year) as string
     },
     {
       regionId: user.regionId,

@@ -124,74 +124,116 @@ export const lockDemands = async (level: LockingLevel, scope: any) => {
   });
 };
 
-export const getDemandDashboardSummary = async (scope: any) => {
+export const getDemandDashboardSummary = async (params: any, scope: any) => {
+  const { page = 1, limit = 5, status, seasonName } = params;
   const { regionId, zoneId, woredaId, kebeleId } = scope;
 
-  // 1. Get active season (most recent for now)
-  const activeSeason = await prisma.season.findFirst({
-    orderBy: { createdAt: 'desc' },
-  });
+  // 1. Get active season
+  let activeSeason;
+  if (seasonName) {
+    activeSeason = await prisma.season.findUnique({ where: { name: seasonName } });
+  } else {
+    activeSeason = await prisma.season.findFirst({ orderBy: { createdAt: 'desc' } });
+  }
 
   if (!activeSeason) return null;
 
   // 2. Build filter
   const where: any = { seasonId: activeSeason.id };
+  if (status) where.status = status;
+
+  // Geographic Scoping
   if (kebeleId) where.farmer = { kebeleId };
   else if (woredaId) where.farmer = { kebele: { woredaId } };
   else if (zoneId) where.farmer = { kebele: { woreda: { zoneId } } };
   else if (regionId) where.farmer = { kebele: { woreda: { zone: { regionId } } } };
 
-  // 3. Fetch demands with farmer info for intelligence calc
-  const demands = await prisma.farmerDemand.findMany({
+  // 3. KPI Metrics (Top Cards)
+  // Fetch everything needed for KPIs in parallel
+  const [kebeleCount, farmerCount, demandAgg, allDemands] = await Promise.all([
+   
+    // totalKebeles: Group by kebeleId to get unique IDs, then we take the length
+  prisma.farmer.groupBy({
+    by: ['kebeleId'],
+    where: { demands: { some: where } },
+  }),
+  
+  // totalFarmers: Standard count
+  prisma.farmer.count({
+    where: { demands: { some: where } },
+  }),
+
+  // totalDemand & totalAllocated Aggregations
+  prisma.farmerDemand.aggregate({
+    where,
+    _sum: {
+      originalQuantity: true,
+      moaAdjustedQuantity: true,
+      regionAdjustedQuantity: true,
+      zoneAdjustedQuantity: true,
+      woredaAdjustedQuantity: true,
+      kebeleAdjustedQuantity: true,
+    },
+  }),
+
+  // Fetch all demands for summary aggregation
+  prisma.farmerDemand.findMany({
     where,
     include: {
       fertilizerType: true,
-      farmer: {
-        select: { farmAreaHectares: true }
-      }
-    }
-  });
+      farmer: { select: { farmAreaHectares: true } },
+    },
+  }),
+  ]);
 
-  // 4. Aggregate data
+  // Calculate totalAllocated by picking the best adjustment for each record
+  // (We have to do this in memory or via a complex SQL query because it's conditional per record)
+  let totalAllocated = 0;
   const summaryMap: Record<string, any> = {};
-  
-  demands.forEach((d) => {
+
+  allDemands.forEach((d) => {
     const type = d.fertilizerType.name;
+    const approvedVal = d.moaAdjustedQuantity ?? d.regionAdjustedQuantity ?? 
+                        d.zoneAdjustedQuantity ?? d.woredaAdjustedQuantity ?? 
+                        d.kebeleAdjustedQuantity ?? 0;
+    
+    totalAllocated += approvedVal;
+
     if (!summaryMap[type]) {
       summaryMap[type] = {
         fertilizerType: type,
-        collected: 0,
-        intelligence: 0,
-        approved: 0,
-        total: 0,
-        canAdjust: true, // Default
+        collectedQty: 0,
+        intelligenceQty: 0,
+        approvedQty: 0,
+        finalAllocatedQty: 0,
       };
     }
 
     const item = summaryMap[type];
-    item.collected += d.originalQuantity;
+    item.collectedQty += d.originalQuantity;
     
     // Intelligence Logic: Area * Constant (Example: Urea=2.5, DAP=2.0)
-    const constant = type === 'Urea' ? 2.5 : 2.0;
-    item.intelligence += (d.farmer.farmAreaHectares || 0) * constant;
-
-    // Mapping "Approved" to the most recent adjustment or original
-    const approvedVal = d.moaAdjustedQuantity || d.regionAdjustedQuantity || 
-                        d.zoneAdjustedQuantity || d.woredaAdjustedQuantity || 
-                        d.kebeleAdjustedQuantity || 0;
-    item.approved += approvedVal;
+    const constant = type.toLowerCase().includes('urea') ? 2.5 : 2.0;
+    item.intelligenceQty += (d.farmer.farmAreaHectares || 0) * constant;
     
-    // Total column calculation (as per UI: approved + some base or just approved?)
-    // Based on image total = intelligence + approved or just approved? 
-    // Image says: collected=12, intelligence=17, approved=6, total=16.
-    // 12 + 4 = 16? Or intelligence 17 - 1 = 16? 
-    // Let's assume Total = approved for now, but in the image 16 is shown for Urea.
-    // I will use item.approved for the Approved column and item.total as a calculated field.
-    item.total = item.approved + (item.collected * 0.8); // Example formula to match image logic
+    item.approvedQty += approvedVal;
+    item.finalAllocatedQty += approvedVal; // Assuming finalAllocated = approved for now
   });
 
-  // 5. Check Locking Status
-  // If any demand in this scope is locked at Woreda level or above, adjustment is disabled
+  const metrics = {
+    totalKebeles: kebeleCount,
+    totalFarmers: farmerCount,
+    totalDemand: demandAgg._sum.originalQuantity || 0,
+    totalAllocated: totalAllocated,
+  };
+
+  // 4. Pagination for Summary
+  const fullSummary = Object.values(summaryMap);
+  const totalRecords = fullSummary.length;
+  const totalPages = Math.ceil(totalRecords / limit);
+  const paginatedSummary = fullSummary.slice((page - 1) * limit, page * limit);
+
+  // 5. Check Locking Status (Adjustment Status)
   const lockStatus = await prisma.farmerDemand.findFirst({
     where: {
       ...where,
@@ -205,14 +247,16 @@ export const getDemandDashboardSummary = async (scope: any) => {
     ? `Adjustment stopped at ${lockStatus.lockedAtLevel} level` 
     : "Edit is available until Woreda Stops Adjustment";
 
-  const summary = Object.values(summaryMap).map(s => ({
-    ...s,
-    canAdjust: !isLocked
-  }));
-
   return {
     activeSeason,
-    summary,
+    metrics,
+    summary: paginatedSummary,
+    pagination: {
+      currentPage: page,
+      pageSize: limit,
+      totalPages,
+      totalRecords,
+    },
     adjustmentStatus: {
       isLocked,
       lockMessage
@@ -221,7 +265,7 @@ export const getDemandDashboardSummary = async (scope: any) => {
 };
 
 export const getDemandDetailList = async (params: any, scope: any) => {
-  const { q, status, fertilizerType, page = 1, limit = 20 } = params;
+  const { q, status, fertilizerType, page = 1, limit = 10, seasonName } = params;
   const { regionId, zoneId, woredaId, kebeleId, role } = scope;
 
   const skip = (page - 1) * limit;
@@ -235,11 +279,17 @@ export const getDemandDetailList = async (params: any, scope: any) => {
   else if (zoneId) where.farmer = { kebele: { woreda: { zoneId } } };
   else if (regionId) where.farmer = { kebele: { woreda: { zone: { regionId } } } };
 
+  // Season filter
+  if (seasonName) {
+    where.season = { name: seasonName };
+  }
+
   // Search
   if (q) {
     where.OR = [
-      { requestId: { contains: q, mode: 'insensitive' } },
-      { farmer: { fullName: { contains: q, mode: 'insensitive' } } }
+      { id: { contains: q, mode: 'insensitive' } },
+      { farmer: { fullName: { contains: q, mode: 'insensitive' } } },
+      { farmer: { uniqueFarmerId: { contains: q, mode: 'insensitive' } } }
     ];
   }
 
@@ -265,6 +315,7 @@ export const getDemandDetailList = async (params: any, scope: any) => {
           }
         },
         fertilizerType: true,
+        season: true
       },
       orderBy: { createdAt: 'desc' }
     }),
@@ -280,11 +331,13 @@ export const getDemandDetailList = async (params: any, scope: any) => {
       id: d.id,
       requestId: d.id,
       farmerName: d.farmer.fullName,
+      uniqueFarmerId: d.farmer.uniqueFarmerId,
       sex: d.farmer.gender,
       kebele: d.farmer.kebele.name,
       woreda: d.farmer.kebele.woreda.name,
       zone: d.farmer.kebele.woreda.zone.name,
       fertilizerType: d.fertilizerType.name,
+      seasonName: d.season.name,
       amount: `${d.originalQuantity} Qt`,
       status: d.status,
       permissions: { canEdit, canDelete }
@@ -293,10 +346,11 @@ export const getDemandDetailList = async (params: any, scope: any) => {
 
   return {
     demands: mappedDemands,
-    meta: {
-      totalCount,
+    pagination: {
       currentPage: page,
-      totalPages: Math.ceil(totalCount / limit)
+      pageSize: limit,
+      totalPages: Math.ceil(totalCount / limit),
+      totalRecords: totalCount
     }
   };
 };
