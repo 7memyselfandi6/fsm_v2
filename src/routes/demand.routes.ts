@@ -16,6 +16,13 @@ import { auditLog } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
+// Submit demand (Public - no auth required)
+router.post(
+  '/',
+  auditLog('CREATE_DEMAND'),
+  submitFarmerDemand
+);
+
 router.use(protect);
 
 router.get('/seasons', getSeasons);
@@ -25,14 +32,6 @@ router.get('/fertilizers', getFertilizerTypes);
 // Dashboards
 router.get('/dashboard-summary', auditLog('FETCH_DEMAND_DASHBOARD'), getDashboardSummary);
 router.get('/detail-list', auditLog('FETCH_DEMAND_LIST'), getDetailList);
-
-// Submit demand (DA)
-router.post(
-  '/',
-  auditLog('CREATE_DEMAND'),
-  authorizeRole(['KEBELE_DA', 'KEBELE_MANAGER', 'SUPER_ADMIN']),
-  submitFarmerDemand
-);
 
 // Adjust demand (Multi-level Approved quantity)
 router.put(

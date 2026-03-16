@@ -4,9 +4,11 @@ import * as demandService from '../services/demand.service.js';
 import { DemandStatus, LockingLevel } from '@prisma/client';
 import crypto from 'crypto';
 import { z } from 'zod';
+import prisma from '../config/prisma.js';
 
-// Validation Schema for Bulk Submission
-const bulkDemandSchema = z.object({
+// Validation Schema for Public Bulk Submission
+const publicBulkDemandSchema = z.object({
+  uniqueFarmerId: z.string().min(1, 'Farmer ID is required'),
   seasonName: z.string().min(1, 'Season name is required'),
   cropTypeIds: z.array(z.string().uuid('Invalid Crop Type ID')).min(1, 'At least one crop must be selected'),
   fertilizers: z.array(z.object({
@@ -43,17 +45,21 @@ export const getFertilizerTypes = asyncHandler(async (req: Request, res: Respons
   res.json(fertilizers);
 });
 
-// @desc    Submit farmer demands in bulk
+// @desc    Submit farmer demands in bulk (Public - identified by uniqueFarmerId)
 // @route   POST /api/demands
 export const submitFarmerDemand = asyncHandler(async (req: Request, res: Response) => {
   // 1. Validation using Zod
-  const validatedBody = bulkDemandSchema.parse(req.body);
+  const validatedBody = publicBulkDemandSchema.parse(req.body);
 
-  // 2. Context Extraction (farmerId from session)
-  const farmerId = req.user?.farmerId;
-  if (!farmerId) {
-    res.status(401);
-    throw new Error('Authenticated user is not linked to a farmer profile');
+  // 2. Farmer Validation (Lookup by uniqueFarmerId)
+  const farmer = await prisma.farmer.findUnique({
+    where: { uniqueFarmerId: validatedBody.uniqueFarmerId },
+    select: { id: true, kebeleId: true }
+  });
+
+  if (!farmer) {
+    res.status(404);
+    throw new Error('Invalid Farmer ID. Please check your ID and try again.');
   }
 
   // 3. Season Resolution
@@ -65,11 +71,11 @@ export const submitFarmerDemand = asyncHandler(async (req: Request, res: Respons
 
   // 4. Data Mapping & Service Call
   const result = await demandService.createBatchFarmerDemands({
-    farmerId,
+    farmerId: farmer.id,
     seasonId: season.id,
     cropTypeIds: validatedBody.cropTypeIds,
     fertilizers: validatedBody.fertilizers,
-    generateRequestId // Pass generator function
+    generateRequestId
   });
 
   res.status(201).json({
