@@ -233,13 +233,39 @@ async function main() {
     },
   });
 
-  // 10. Create Shipping Lots
-  for (let i = 1; i <= 21; i++) {
+  // 10. Create Shipping Lots with different compositions
+  const lotCompositions = [
+    { lotNumber: 1, ureaAmount: 25000, dapAmount: 0 },       // Urea only
+    { lotNumber: 2, ureaAmount: 0, dapAmount: 25000 },       // DAP only
+    { lotNumber: 3, ureaAmount: 15000, dapAmount: 10000 },   // Both Urea & DAP
+    { lotNumber: 4, ureaAmount: 0, dapAmount: 0 },           // Neither (None)
+  ];
+
+  for (const comp of lotCompositions) {
+    const total = comp.ureaAmount + comp.dapAmount;
+    // Simple validation check before creating
+    if (total < 0) throw new Error('Invalid lot composition');
+
+    await prisma.shippingLot.create({
+      data: {
+        lotNumber: comp.lotNumber,
+        fertilizerTypeId: urea.id, // Default reference
+        ureaAmount: comp.ureaAmount,
+        dapAmount: comp.dapAmount,
+        totalQuantity: total,
+      },
+    });
+  }
+
+  // Create remaining lots as Urea only
+  for (let i = 5; i <= 21; i++) {
     await prisma.shippingLot.create({
       data: {
         lotNumber: i,
         fertilizerTypeId: urea.id,
-        totalQuantity: 25000, // MT
+        ureaAmount: 25000,
+        dapAmount: 0,
+        totalQuantity: 25000,
       },
     });
   }

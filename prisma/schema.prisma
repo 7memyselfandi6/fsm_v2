@@ -33,6 +33,7 @@ model Zone {
   region    Region   @relation(fields: [regionId], references: [id])
 
   @@unique([name, regionId])
+  @@index([regionId])
 }
 
 model Woreda {
@@ -46,6 +47,7 @@ model Woreda {
   zone      Zone     @relation(fields: [zoneId], references: [id])
 
   @@unique([name, zoneId])
+  @@index([zoneId])
 }
 
 model Kebele {
@@ -61,6 +63,7 @@ model Kebele {
   sections  Section[]
 
   @@unique([name, woredaId])
+  @@index([woredaId])
 }
 
 model Section {
@@ -72,6 +75,7 @@ model Section {
   updatedAt DateTime @updatedAt
 
   @@unique([name, kebeleId])
+  @@index([kebeleId])
 }
 
 model RegionalFlag {
@@ -83,6 +87,15 @@ model RegionalFlag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   region    Region   @relation(fields: [regionId], references: [id])
+}
+
+model FederalFlag {
+  id        String   @id @default(uuid())
+  name      String
+  category  String
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -131,6 +144,9 @@ model Union {
   region       Region        @relation(fields: [regionId], references: [id])
   zone         Zone?         @relation(fields: [zoneId], references: [id])
   users        User[]
+
+  @@index([regionId])
+  @@index([zoneId])
 }
 
 model Destination {
@@ -142,6 +158,8 @@ model Destination {
   union         Union         @relation(fields: [unionId], references: [id])
   lotDispatches LotDispatch[]
   pcs           PC[]
+
+  @@index([unionId])
 }
 
 model PC {
@@ -156,6 +174,9 @@ model PC {
   kebele        Kebele           @relation(fields: [kebeleId], references: [id])
   inventory     PCInventory[]
   users         User[]
+
+  @@index([kebeleId])
+  @@index([destinationId])
 }
 
 model Farmer {
@@ -175,6 +196,8 @@ model Farmer {
   demands            FarmerDemand[]
   sales              FertilizerSale[]
   user               User?
+
+  @@index([kebeleId])
 }
 
 model Season {
@@ -238,6 +261,10 @@ model FarmerDemand {
   farmer                 Farmer         @relation(fields: [farmerId], references: [id])
   fertilizerType         FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
   season                 Season         @relation(fields: [seasonId], references: [id])
+
+  @@index([farmerId])
+  @@index([seasonId])
+  @@index([fertilizerTypeId])
 }
 
 model ShippingLot {

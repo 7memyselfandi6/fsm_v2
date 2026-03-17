@@ -24,6 +24,28 @@ const getRegionalFlag = async (regionId?: string | null) => {
   return await prisma.regionalFlag.findUnique({ where: { regionId } });
 };
 
+// const getOrCreateFederalFlag = async () => {
+//   let flag = await (prisma as any).federalFlag?.findFirst();
+//   if (!flag) {
+//     flag = await (prisma as any).federalFlag.create({
+//       data: {
+//         name: 'Federal Flag',
+//         category: 'FEDERAL',
+//         imageUrl: 'https://example.com/federal-flag.png' // Default URL
+//       }
+//     });
+//   }
+//   return flag;
+// };
+
+export const getEffectiveQty = (d: any) => 
+  d.moaAdjustedQuantity ?? 
+  d.regionAdjustedQuantity ?? 
+  d.zoneAdjustedQuantity ?? 
+  d.woredaAdjustedQuantity ?? 
+  d.kebeleAdjustedQuantity ?? 
+  d.originalQuantity;
+
 /** --- BASIC FETCHERS --- **/
 export const getSeasons = async () => await prisma.season.findMany();
 export const getSeasonByName = async (name: string) => await prisma.season.findUnique({ where: { name } });
@@ -55,13 +77,18 @@ export const getKebeleSummary = async (user: any, seasonName?: string) => {
     }
   });
 
-  const summaryMap: Record<string, number> = {};
+  const summaryMap: Record<string, { original: number, adjusted: number }> = {};
   let totalAmount = 0;
+  let totalAdjustedAmount = 0;
 
   demands.forEach(d => {
     const type = d.fertilizerType.name;
-    summaryMap[type] = (summaryMap[type] || 0) + d.originalQuantity;
+    const effective = getEffectiveQty(d);
+    if (!summaryMap[type]) summaryMap[type] = { original: 0, adjusted: 0 };
+    summaryMap[type].original += d.originalQuantity;
+    summaryMap[type].adjusted += effective;
     totalAmount += d.originalQuantity;
+    totalAdjustedAmount += effective;
   });
 
   return {
@@ -70,9 +97,11 @@ export const getKebeleSummary = async (user: any, seasonName?: string) => {
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
     totalAmount: `${totalAmount} Qt`,
-    fertilizerBreakdown: Object.entries(summaryMap).map(([type, amount]) => ({ 
+    totalAdjustedAmount: `${totalAdjustedAmount} Qt`,
+    fertilizerBreakdown: Object.entries(summaryMap).map(([type, counts]) => ({ 
       type, 
-      amount: `${amount} Qt` 
+      originalAmount: `${counts.original} Qt`,
+      adjustedAmount: `${counts.adjusted} Qt`
     }))
   };
 };
@@ -185,41 +214,50 @@ export const getWoredaSummary = async (user: any, seasonName?: string) => {
   });
 
   // Calculate Woreda Summary
-  const woredaSummaryMap: Record<string, number> = {};
+  const woredaSummaryMap: Record<string, { original: number, adjusted: number }> = {};
   let woredaTotalAmount = 0;
+  let woredaTotalAdjustedAmount = 0;
 
   // Group by Kebele
-  const kebeleSummaries: Record<string, { name: string, totalAmount: number, fertilizerBreakdown: any[] }> = {};
+  const kebeleSummaries: Record<string, { name: string, totalAmount: number, totalAdjustedAmount: number, fertilizerBreakdown: any[] }> = {};
   
   // Initialize Kebele Summaries
   woreda.kebeles.forEach(k => {
-    kebeleSummaries[k.id] = { name: k.name, totalAmount: 0, fertilizerBreakdown: [] };
+    kebeleSummaries[k.id] = { name: k.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [] };
   });
 
-  const kebeleFertilizerMaps: Record<string, Record<string, number>> = {};
+  const kebeleFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
 
   demands.forEach(d => {
     const type = d.fertilizerType.name;
     const kid = d.farmer.kebeleId;
+    const effective = getEffectiveQty(d);
 
     // Woreda aggregation
-    woredaSummaryMap[type] = (woredaSummaryMap[type] || 0) + d.originalQuantity;
+    if (!woredaSummaryMap[type]) woredaSummaryMap[type] = { original: 0, adjusted: 0 };
+    woredaSummaryMap[type].original += d.originalQuantity;
+    woredaSummaryMap[type].adjusted += effective;
     woredaTotalAmount += d.originalQuantity;
+    woredaTotalAdjustedAmount += effective;
 
     // Kebele aggregation
     if (kebeleSummaries[kid]) {
       kebeleSummaries[kid].totalAmount += d.originalQuantity;
+      kebeleSummaries[kid].totalAdjustedAmount += effective;
       if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
-      kebeleFertilizerMaps[kid][type] = (kebeleFertilizerMaps[kid][type] || 0) + d.originalQuantity;
+      if (!kebeleFertilizerMaps[kid][type]) kebeleFertilizerMaps[kid][type] = { original: 0, adjusted: 0 };
+      kebeleFertilizerMaps[kid][type].original += d.originalQuantity;
+      kebeleFertilizerMaps[kid][type].adjusted += effective;
     }
   });
 
   // Convert Kebele maps to breakdowns
   Object.keys(kebeleSummaries).forEach(kid => {
     const fertMap = kebeleFertilizerMaps[kid] || {};
-    kebeleSummaries[kid].fertilizerBreakdown = Object.entries(fertMap).map(([type, amount]) => ({
+    kebeleSummaries[kid].fertilizerBreakdown = Object.entries(fertMap).map(([type, counts]) => ({
       type,
-      amount: `${amount} Qt`
+      originalAmount: `${counts.original} Qt`,
+      adjustedAmount: `${counts.adjusted} Qt`
     }));
   });
 
@@ -229,14 +267,17 @@ export const getWoredaSummary = async (user: any, seasonName?: string) => {
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
     totalAmount: `${woredaTotalAmount} Qt`,
-    fertilizerBreakdown: Object.entries(woredaSummaryMap).map(([type, amount]) => ({ 
+    totalAdjustedAmount: `${woredaTotalAdjustedAmount} Qt`,
+    fertilizerBreakdown: Object.entries(woredaSummaryMap).map(([type, counts]) => ({ 
       type, 
-      amount: `${amount} Qt` 
+      originalAmount: `${counts.original} Qt`,
+      adjustedAmount: `${counts.adjusted} Qt`
     })),
     kebeles: Object.entries(kebeleSummaries).map(([kid, k]) => ({
       kebeleId: kid,
       kebeleName: k.name,
       totalAmount: `${k.totalAmount} Qt`,
+      totalAdjustedAmount: `${k.totalAdjustedAmount} Qt`,
       fertilizerBreakdown: k.fertilizerBreakdown
     }))
   };
@@ -365,48 +406,60 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
   });
 
   // Aggregators
-  const zoneSummaryMap: Record<string, number> = {};
+  const zoneSummaryMap: Record<string, { original: number, adjusted: number }> = {};
   let zoneTotalAmount = 0;
+  let zoneTotalAdjustedAmount = 0;
 
   // Hierarchical Structure: Woreda -> Kebele -> Fertilizer Summary
   const woredaData: Record<string, { 
     name: string, 
     totalAmount: number, 
+    totalAdjustedAmount: number,
     fertilizerBreakdown: any[], 
-    kebeles: Record<string, { name: string, totalAmount: number, fertilizerBreakdown: any[] }> 
+    kebeles: Record<string, { name: string, totalAmount: number, totalAdjustedAmount: number, fertilizerBreakdown: any[] }> 
   }> = {};
 
   // Initialize Structure
   zone.woredas.forEach(w => {
-    woredaData[w.id] = { name: w.name, totalAmount: 0, fertilizerBreakdown: [], kebeles: {} };
+    woredaData[w.id] = { name: w.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [], kebeles: {} };
     w.kebeles.forEach(k => {
-      woredaData[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, fertilizerBreakdown: [] };
+      woredaData[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [] };
     });
   });
 
-  const woredaFertilizerMaps: Record<string, Record<string, number>> = {};
-  const kebeleFertilizerMaps: Record<string, Record<string, number>> = {};
+  const woredaFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
+  const kebeleFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
 
   demands.forEach(d => {
     const type = d.fertilizerType.name;
     const kid = d.farmer.kebeleId;
     const wid = d.farmer.kebele.woredaId;
+    const effective = getEffectiveQty(d);
 
     // Zone aggregation
-    zoneSummaryMap[type] = (zoneSummaryMap[type] || 0) + d.originalQuantity;
+    if (!zoneSummaryMap[type]) zoneSummaryMap[type] = { original: 0, adjusted: 0 };
+    zoneSummaryMap[type].original += d.originalQuantity;
+    zoneSummaryMap[type].adjusted += effective;
     zoneTotalAmount += d.originalQuantity;
+    zoneTotalAdjustedAmount += effective;
 
     // Woreda aggregation
     if (woredaData[wid]) {
       woredaData[wid].totalAmount += d.originalQuantity;
+      woredaData[wid].totalAdjustedAmount += effective;
       if (!woredaFertilizerMaps[wid]) woredaFertilizerMaps[wid] = {};
-      woredaFertilizerMaps[wid][type] = (woredaFertilizerMaps[wid][type] || 0) + d.originalQuantity;
+      if (!woredaFertilizerMaps[wid][type]) woredaFertilizerMaps[wid][type] = { original: 0, adjusted: 0 };
+      woredaFertilizerMaps[wid][type].original += d.originalQuantity;
+      woredaFertilizerMaps[wid][type].adjusted += effective;
 
       // Kebele aggregation
       if (woredaData[wid].kebeles[kid]) {
         woredaData[wid].kebeles[kid].totalAmount += d.originalQuantity;
+        woredaData[wid].kebeles[kid].totalAdjustedAmount += effective;
         if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
-        kebeleFertilizerMaps[kid][type] = (kebeleFertilizerMaps[kid][type] || 0) + d.originalQuantity;
+        if (!kebeleFertilizerMaps[kid][type]) kebeleFertilizerMaps[kid][type] = { original: 0, adjusted: 0 };
+        kebeleFertilizerMaps[kid][type].original += d.originalQuantity;
+        kebeleFertilizerMaps[kid][type].adjusted += effective;
       }
     }
   });
@@ -417,13 +470,23 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
     return {
       woredaName: w.name,
       totalAmount: `${w.totalAmount} Qt`,
-      fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+      totalAdjustedAmount: `${w.totalAdjustedAmount} Qt`,
+      fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, counts]) => ({ 
+        type, 
+        originalAmount: `${counts.original} Qt`,
+        adjustedAmount: `${counts.adjusted} Qt`
+      })),
       kebeles: Object.entries(w.kebeles).map(([kid, k]) => {
         const kebeleFertMap = kebeleFertilizerMaps[kid] || {};
         return {
           kebeleName: k.name,
           totalAmount: `${k.totalAmount} Qt`,
-          fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` }))
+          totalAdjustedAmount: `${k.totalAdjustedAmount} Qt`,
+          fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, counts]) => ({ 
+            type, 
+            originalAmount: `${counts.original} Qt`,
+            adjustedAmount: `${counts.adjusted} Qt`
+          }))
         };
       })
     };
@@ -435,9 +498,11 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
     totalAmount: `${zoneTotalAmount} Qt`,
-    fertilizerBreakdown: Object.entries(zoneSummaryMap).map(([type, amount]) => ({ 
+    totalAdjustedAmount: `${zoneTotalAdjustedAmount} Qt`,
+    fertilizerBreakdown: Object.entries(zoneSummaryMap).map(([type, counts]) => ({ 
       type, 
-      amount: `${amount} Qt` 
+      originalAmount: `${counts.original} Qt`,
+      adjustedAmount: `${counts.adjusted} Qt`
     })),
     woredas
   };
@@ -685,26 +750,104 @@ export const getDemandById = async (id: string) => {
 
 /** --- REGION MODULE --- **/
 
+/**
+ * Validates lot data consistency.
+ * Rules:
+ * - ureaAmount and dapAmount must be non-negative.
+ * - totalQuantity must be equal to the sum of ureaAmount and dapAmount.
+ */
+export const validateLotData = (data: { ureaAmount?: number, dapAmount?: number, totalQuantity: number }) => {
+  const urea = data.ureaAmount || 0;
+  const dap = data.dapAmount || 0;
+  if (urea < 0 || dap < 0) {
+    throw new Error('Fertilizer amounts cannot be negative');
+  }
+  if (Math.abs(urea + dap - data.totalQuantity) > 0.01) {
+    throw new Error('Total quantity must be the sum of urea and dap amounts');
+  }
+};
+
+/**
+ * Helper to calculate lot composition and total amount.
+ * 
+ * Business Rules:
+ * - totalFertilizerAmount = ureaAmount + dapAmount
+ * - fertilizerType is derived from the amounts:
+ *   - Both > 0: "Urea & DAP"
+ *   - Urea > 0: "Urea"
+ *   - DAP > 0: "DAP"
+ *   - Both <= 0: "None"
+ */
+export const mapLotResponse = (l: any) => {
+  const urea = l.ureaAmount || 0;
+  const dap = l.dapAmount || 0;
+  const total = urea + dap;
+
+  let type = 'None';
+  if (urea > 0 && dap > 0) type = 'Urea & DAP';
+  else if (urea > 0) type = 'Urea';
+  else if (dap > 0) type = 'DAP';
+
+  return {
+    id: l.id,
+    lotNumber: l.lotNumber,
+    totalFertilizerAmount: `${total} Qt`,
+    ureaAmount: `${urea} Qt`,
+    dapAmount: `${dap} Qt`,
+    fertilizerType: type
+  };
+};
+
 export const getRegionSummary = async (user: any, seasonName?: string) => {
   const { regionId, role } = user;
-  const [region, activeSeason, flag] = await Promise.all([
-    prisma.region.findUnique({ 
+  const [region, activeSeason, flag, allLots] = await Promise.all([
+    prisma.region.findUnique({
       where: { id: regionId },
-      include: { 
+      include: {
         zones: {
-          include: { 
+          include: {
             woredas: {
-              include: { kebeles: true }
+              include: {
+                kebeles: true
+              }
+            }
+          }
+        },
+        unions: {
+          include: {
+            destinations: {
+              include: {
+                pcs: {
+                  include: {
+                    kebele: true
+                  }
+                }
+              }
             }
           }
         }
       }
     }),
     getActiveSeason(seasonName),
-    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId),
+    prisma.shippingLot.findMany({
+      include: {
+        fertilizerType: true
+      }
+    })
   ]);
 
   if (!activeSeason || !region) return null;
+
+  // Validation: lots array should not be empty and each lot must have an ID
+  if (!allLots || allLots.length === 0) {
+    throw new Error('No fertilizer lots found in the system');
+  }
+
+  const lots = allLots.map(l => {
+    if (!l.id) throw new Error(`Lot record missing unique identifier: ${l.lotNumber}`);
+    return mapLotResponse(l);
+  });
 
   const demands = await prisma.farmerDemand.findMany({
     where: { 
@@ -725,84 +868,177 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
 
   // Aggregators
   const regionSummaryMap: Record<string, number> = {};
+  const regionAdjustedSummaryMap: Record<string, number> = {};
   let regionTotalAmount = 0;
+  let regionTotalAdjustedAmount = 0;
 
   // Hierarchical Structure: Zone -> Woreda -> Kebele
   const zoneData: Record<string, any> = {};
 
   // Initialize Structure
   region.zones.forEach(z => {
-    zoneData[z.id] = { name: z.name, totalAmount: 0, fertilizerBreakdown: [], woredas: {} };
+    zoneData[z.id] = { name: z.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [], woredas: {} };
     z.woredas.forEach(w => {
-      zoneData[z.id].woredas[w.id] = { name: w.name, totalAmount: 0, fertilizerBreakdown: [], kebeles: {} };
+      zoneData[z.id].woredas[w.id] = { name: w.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [], kebeles: {} };
       w.kebeles.forEach(k => {
-        zoneData[z.id].woredas[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, fertilizerBreakdown: [] };
+        zoneData[z.id].woredas[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [] };
       });
     });
   });
 
-  const zoneFertilizerMaps: Record<string, Record<string, number>> = {};
-  const woredaFertilizerMaps: Record<string, Record<string, number>> = {};
-  const kebeleFertilizerMaps: Record<string, Record<string, number>> = {};
+  const zoneFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
+  const woredaFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
+  const kebeleFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
 
   demands.forEach(d => {
     const type = d.fertilizerType.name;
     const kid = d.farmer.kebeleId;
     const wid = d.farmer.kebele.woredaId;
     const zid = d.farmer.kebele.woreda.zoneId;
+    const effectiveQty = getEffectiveQty(d);
 
     // Region aggregation
     regionSummaryMap[type] = (regionSummaryMap[type] || 0) + d.originalQuantity;
+    regionAdjustedSummaryMap[type] = (regionAdjustedSummaryMap[type] || 0) + effectiveQty;
     regionTotalAmount += d.originalQuantity;
+    regionTotalAdjustedAmount += effectiveQty;
 
     // Zone aggregation
     if (zoneData[zid]) {
       zoneData[zid].totalAmount += d.originalQuantity;
+      zoneData[zid].totalAdjustedAmount += effectiveQty;
       if (!zoneFertilizerMaps[zid]) zoneFertilizerMaps[zid] = {};
-      zoneFertilizerMaps[zid][type] = (zoneFertilizerMaps[zid][type] || 0) + d.originalQuantity;
+      if (!zoneFertilizerMaps[zid][type]) zoneFertilizerMaps[zid][type] = { original: 0, adjusted: 0 };
+      zoneFertilizerMaps[zid][type].original += d.originalQuantity;
+      zoneFertilizerMaps[zid][type].adjusted += effectiveQty;
 
       // Woreda aggregation
       if (zoneData[zid].woredas[wid]) {
         zoneData[zid].woredas[wid].totalAmount += d.originalQuantity;
+        zoneData[zid].woredas[wid].totalAdjustedAmount += effectiveQty;
         if (!woredaFertilizerMaps[wid]) woredaFertilizerMaps[wid] = {};
-        woredaFertilizerMaps[wid][type] = (woredaFertilizerMaps[wid][type] || 0) + d.originalQuantity;
+        if (!woredaFertilizerMaps[wid][type]) woredaFertilizerMaps[wid][type] = { original: 0, adjusted: 0 };
+        woredaFertilizerMaps[wid][type].original += d.originalQuantity;
+        woredaFertilizerMaps[wid][type].adjusted += effectiveQty;
 
         // Kebele aggregation
         if (zoneData[zid].woredas[wid].kebeles[kid]) {
           zoneData[zid].woredas[wid].kebeles[kid].totalAmount += d.originalQuantity;
+          zoneData[zid].woredas[wid].kebeles[kid].totalAdjustedAmount += effectiveQty;
           if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
-          kebeleFertilizerMaps[kid][type] = (kebeleFertilizerMaps[kid][type] || 0) + d.originalQuantity;
+          if (!kebeleFertilizerMaps[kid][type]) kebeleFertilizerMaps[kid][type] = { original: 0, adjusted: 0 };
+          kebeleFertilizerMaps[kid][type].original += d.originalQuantity;
+          kebeleFertilizerMaps[kid][type].adjusted += effectiveQty;
         }
       }
     }
   });
 
-  // Final Transformation
+  // Final Transformation for Zones
   const zones = Object.entries(zoneData).map(([zid, z]) => {
     const zoneFertMap = zoneFertilizerMaps[zid] || {};
     return {
       zoneId: zid,
       zoneName: z.name,
       totalAmount: `${z.totalAmount} Qt`,
-      fertilizerBreakdown: Object.entries(zoneFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+      totalAdjustedAmount: `${z.totalAdjustedAmount} Qt`,
+      fertilizerBreakdown: Object.entries(zoneFertMap).map(([type, counts]) => ({ 
+        type, 
+        originalAmount: `${counts.original} Qt`,
+        adjustedAmount: `${counts.adjusted} Qt`
+      })),
       woredas: Object.entries(z.woredas).map(([wid, w]: [string, any]) => {
         const woredaFertMap = woredaFertilizerMaps[wid] || {};
         return {
           woredaId: wid,
           woredaName: w.name,
           totalAmount: `${w.totalAmount} Qt`,
-          fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+          totalAdjustedAmount: `${w.totalAdjustedAmount} Qt`,
+          fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, counts]) => ({ 
+            type, 
+            originalAmount: `${counts.original} Qt`,
+            adjustedAmount: `${counts.adjusted} Qt`
+          })),
           kebeles: Object.entries(w.kebeles).map(([kid, k]: [string, any]) => {
             const kebeleFertMap = kebeleFertilizerMaps[kid] || {};
             return {
               kebeleId: kid,
               kebeleName: k.name,
               totalAmount: `${k.totalAmount} Qt`,
-              fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` }))
+              totalAdjustedAmount: `${k.totalAdjustedAmount} Qt`,
+              fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, counts]) => ({ 
+                type, 
+                originalAmount: `${counts.original} Qt`,
+                adjustedAmount: `${counts.adjusted} Qt`
+              }))
             };
           })
         };
       })
+    };
+  });
+
+  // Union -> Destination -> PC Structure
+  const unions = region.unions.map(u => {
+    const unionDemands = demands.filter(d => {
+      // Find if the demand's kebele is associated with any PC in any destination of this union
+      return u.destinations.some(dest => 
+        dest.pcs.some(pc => pc.kebeleId === d.farmer.kebeleId)
+      );
+    });
+
+    const unionSummary: Record<string, { original: number, adjusted: number }> = {};
+    unionDemands.forEach(d => {
+      const type = d.fertilizerType.name;
+      if (!unionSummary[type]) unionSummary[type] = { original: 0, adjusted: 0 };
+      unionSummary[type].original += d.originalQuantity;
+      unionSummary[type].adjusted += getEffectiveQty(d);
+    });
+
+    return {
+      unionId: u.id,
+      unionName: u.name,
+      zoneId: u.zoneId,
+      regionId: u.regionId,
+      destinations: u.destinations.map(dest => ({
+        destinationId: dest.id,
+        destinationName: dest.name,
+        pcs: dest.pcs.map(pc => {
+          const pcDemands = demands.filter(d => d.farmer.kebeleId === pc.kebeleId);
+          let pcTotalAmount = 0;
+          let pcTotalAdjustedAmount = 0;
+          const pcBreakdown: Record<string, { original: number, adjusted: number }> = {};
+          
+          pcDemands.forEach(d => {
+            const type = d.fertilizerType.name;
+            const effective = getEffectiveQty(d);
+            pcTotalAmount += d.originalQuantity;
+            pcTotalAdjustedAmount += effective;
+            if (!pcBreakdown[type]) pcBreakdown[type] = { original: 0, adjusted: 0 };
+            pcBreakdown[type].original += d.originalQuantity;
+            pcBreakdown[type].adjusted += effective;
+          });
+
+          return {
+            pcId: pc.id,
+            pcName: pc.name,
+            kebeleId: pc.kebeleId,
+            woredaId: pc.kebele.woredaId,
+            totalAmount: `${pcTotalAmount} Qt`,
+            totalAdjustedAmount: `${pcTotalAdjustedAmount} Qt`,
+            fertilizerBreakdown: Object.entries(pcBreakdown).map(([type, counts]) => ({
+              type,
+              originalAmount: `${counts.original} Qt`,
+              adjustedAmount: `${counts.adjusted} Qt`
+            }))
+          };
+        })
+      })),
+      fertilizerDemand: Object.entries(unionSummary).map(([type, counts]) => ({
+        type,
+        requestedAmount: `${counts.original} Qt`,
+        adjustedAmount: `${counts.adjusted} Qt`
+      }))
     };
   });
 
@@ -812,11 +1048,15 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
     totalAmount: `${regionTotalAmount} Qt`,
+    totalAdjustedAmount: `${regionTotalAdjustedAmount} Qt`,
     fertilizerBreakdown: Object.entries(regionSummaryMap).map(([type, amount]) => ({ 
       type, 
-      amount: `${amount} Qt` 
+      originalAmount: `${amount} Qt`,
+      adjustedAmount: `${regionAdjustedSummaryMap[type]} Qt`
     })),
-    zones
+    zones,
+    unions,
+    lots
   };
 };
 
@@ -969,7 +1209,8 @@ export const getFederalDashboard = async (seasonName?: string) => {
           }
         }
       }
-    })
+    }),
+    // getOrCreateFederalFlag()
   ]);
 
   const demands = await prisma.farmerDemand.findMany({
@@ -977,62 +1218,133 @@ export const getFederalDashboard = async (seasonName?: string) => {
     include: { fertilizerType: true }
   });
 
-  const totalSummary: Record<string, number> = {};
+  const totalSummary: Record<string, { original: number, adjusted: number }> = {};
   let grandTotal = 0;
+  let grandTotalAdjusted = 0;
+
   demands.forEach(d => {
     const type = d.fertilizerType.name;
-    totalSummary[type] = (totalSummary[type] || 0) + d.originalQuantity;
+    const effective = getEffectiveQty(d);
+    if (!totalSummary[type]) totalSummary[type] = { original: 0, adjusted: 0 };
+    totalSummary[type].original += d.originalQuantity;
+    totalSummary[type].adjusted += effective;
     grandTotal += d.originalQuantity;
+    grandTotalAdjusted += effective;
   });
 
   return {
     productionSeason: activeSeason.name,
+    // federalFlagUrl: federalFlag.imageUrl,
     counts: {
       totalUnions: unionsCount,
       totalDestinations: destinationsCount,
       totalPCs: pcsCount
     },
     grandTotal: `${grandTotal} Qt`,
-    fertilizerBreakdown: Object.entries(totalSummary).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
-    regions: regions.map(r => ({
-      regionId: r.id,
-      regionName: r.name,
-      flagUrl: r.regionalFlag?.imageUrl,
-      unions: r.unions.map(u => ({
-        unionId: u.id,
-        unionName: u.name,
-        destinations: u.destinations.map(d => ({
-          destinationId: d.id,
-          destinationName: d.name,
-          pcs: d.pcs.map(p => ({
-            pcId: p.id,
-            pcName: p.name,
-            kebeleId: p.kebeleId
+    grandTotalAdjusted: `${grandTotalAdjusted} Qt`,
+    fertilizerBreakdown: Object.entries(totalSummary).map(([type, counts]) => ({ 
+      type, 
+      originalAmount: `${counts.original} Qt`,
+      adjustedAmount: `${counts.adjusted} Qt`
+    })),
+    regions: regions.map(r => {
+      const regionDemands = demands.filter(d => {
+        // Find if the demand's kebele belongs to a woreda in a zone of this region
+        // This is expensive in JS, but let's assume regions are not too many
+        // Actually, we can pre-calculate this or fetch it differently.
+        return true; // Placeholder, need a better way if region filter is needed here
+      });
+      // Actually, the previous implementation didn't filter regions.
+      return {
+        regionId: r.id,
+        regionName: r.name,
+        flagUrl: r.regionalFlag?.imageUrl,
+        unions: r.unions.map(u => ({
+          unionId: u.id,
+          unionName: u.name,
+          destinations: u.destinations.map(d => ({
+            destinationId: d.id,
+            destinationName: d.name,
+            pcs: d.pcs.map(p => ({
+              pcId: p.id,
+              pcName: p.name,
+              kebeleId: p.kebeleId
+            }))
+          }))
+        })),
+        zones: r.zones.map(z => ({
+          zoneId: z.id,
+          zoneName: z.name,
+          woredas: z.woredas.map(w => ({
+            woredaId: w.id,
+            woredaName: w.name,
+            kebeles: w.kebeles.map(k => ({
+              kebeleId: k.id,
+              kebeleName: k.name
+            }))
           }))
         }))
-      })),
-      zones: r.zones.map(z => ({
-        zoneId: z.id,
-        zoneName: z.name,
-        woredas: z.woredas.map(w => ({
-          woredaId: w.id,
-          woredaName: w.name,
-          kebeles: w.kebeles.map(k => ({
-            kebeleId: k.id,
-            kebeleName: k.name
-          }))
-        }))
-      }))
-    }))
+      };
+    })
   };
 };
+
+export const federalAdjust = async (data: any, user: any) => {
+   const { fertilizerTypeId, adjustments } = data; // adjustments: [{ regionId, quantity }]
+   
+   if (!['MOA_MANAGER', 'MOA_EXPERT', 'SUPER_ADMIN'].includes(user.role)) {
+     throw new Error('Unauthorized for federal adjustments');
+   }
+
+   if (!fertilizerTypeId) throw new Error('Fertilizer Type ID is required');
+   if (!adjustments || !Array.isArray(adjustments)) throw new Error('Adjustments must be an array');
+
+  //  await getOrCreateFederalFlag(); // Ensure federal flag exists during federal operation
+
+   return await prisma.$transaction(async (tx) => {
+     for (const adj of adjustments) {
+       if (!adj.regionId) throw new Error('Region ID is required for each adjustment');
+       if (adj.quantity === undefined || adj.quantity < 0) throw new Error('Valid quantity is required');
+
+       const region = await tx.region.findUnique({ where: { id: adj.regionId } });
+       if (!region) throw new Error(`Region ${adj.regionId} not found`);
+
+       const fertType = await tx.fertilizerType.findUnique({ where: { id: fertilizerTypeId } });
+       if (!fertType) throw new Error(`Fertilizer type ${fertilizerTypeId} not found`);
+
+       const isLocked = await tx.farmerDemand.findFirst({
+         where: { 
+           farmer: { kebele: { woreda: { zone: { regionId: adj.regionId } } } }, 
+           fertilizerTypeId, 
+           lockedAtLevel: LockingLevel.MOA
+         }
+       });
+       if (isLocked) throw new Error(`Region ${adj.regionId} is locked at MOA level`);
+
+       const updateResult = await tx.farmerDemand.updateMany({
+         where: { farmer: { kebele: { woreda: { zone: { regionId: adj.regionId } } } }, fertilizerTypeId },
+         data: { moaAdjustedQuantity: adj.quantity, status: DemandStatus.APPROVED, lockedAtLevel: LockingLevel.MOA }
+       });
+
+       if (updateResult.count === 0) {
+         throw new Error(`No demands found for Region ${adj.regionId} and Fertilizer Type ${fertilizerTypeId}`);
+       }
+     }
+     return { success: true };
+   });
+ };
 
 export const getMasterData = async () => {
   const [unions, destinations, pcs, lots] = await Promise.all([
     prisma.union.findMany({
       include: {
         region: true,
-        zone: true
+        zone: true,
+        destinations: {
+          include: {
+            pcs: true
+          }
+        }
       }
     }),
     prisma.destination.findMany({
@@ -1042,7 +1354,8 @@ export const getMasterData = async () => {
             region: true,
             zone: true
           }
-        }
+        },
+        pcs: true
       }
     }),
     prisma.pC.findMany({
@@ -1060,7 +1373,11 @@ export const getMasterData = async () => {
             }
           }
         },
-        destination: true
+        destination: {
+          include: {
+            union: true
+          }
+        }
       }
     }),
     prisma.shippingLot.findMany({
@@ -1070,18 +1387,36 @@ export const getMasterData = async () => {
     })
   ]);
 
+  // Build hierarchical structure for Unions -> Destinations -> PCs
+  const hierarchicalUnions = unions.map(u => ({
+    id: u.id,
+    name: u.name,
+    regionId: u.regionId,
+    zoneId: u.zoneId,
+    hierarchy: {
+      region: u.region.name,
+      zone: u.zone?.name
+    },
+    destinations: u.destinations.map(d => ({
+      id: d.id,
+      name: d.name,
+      unionId: d.unionId,
+      pcs: d.pcs.map(p => ({
+        id: p.id,
+        name: p.name,
+        kebeleId: p.kebeleId,
+        destinationId: p.destinationId,
+        unionId: u.id
+      }))
+    }))
+  }));
+
   return {
-    unions: unions.map(u => ({
-      id: u.id,
-      name: u.name,
-      hierarchy: {
-        region: u.region.name,
-        zone: u.zone?.name
-      }
-    })),
+    unions: hierarchicalUnions,
     destinations: destinations.map(d => ({
       id: d.id,
       name: d.name,
+      unionId: d.unionId,
       hierarchy: {
         region: d.union.region.name,
         zone: d.union.zone?.name,
@@ -1091,21 +1426,19 @@ export const getMasterData = async () => {
     pcs: pcs.map(p => ({
       id: p.id,
       name: p.name,
+      kebeleId: p.kebeleId,
+      destinationId: p.destinationId,
+      unionId: p.destination.unionId,
       hierarchy: {
         region: p.kebele.woreda.zone.region.name,
         zone: p.kebele.woreda.zone.name,
         woreda: p.kebele.woreda.name,
         kebele: p.kebele.name,
-        destination: p.destination.name
+        destination: p.destination.name,
+        union: p.destination.union.name
       }
     })),
-    lots: lots.map(l => ({
-      lotNumber: l.lotNumber,
-      fertilizerType: l.fertilizerType.name,
-      totalQuantity: l.totalQuantity,
-      ureaAmount: l.ureaAmount,
-      dapAmount: l.dapAmount
-    }))
+    lots: lots.map(l => mapLotResponse(l))
   };
 };
 
