@@ -18,7 +18,7 @@ export const getSections = asyncHandler(async (req: Request, res: Response) => {
 // @route   GET /api/section/:id
 export const getSectionById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const section = await locationService.getSectionById(id);
+  const section = await locationService.getSectionById(id as string);
   if (!section) {
     res.status(404);
     throw new Error('Section not found');
@@ -37,7 +37,7 @@ export const createSection = asyncHandler(async (req: Request, res: Response) =>
 // @route   PUT /api/section/:id
 export const updateSection = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const section = await locationService.updateSection(id, req.body);
+  const section = await locationService.updateSection(id as string, req.body);
   res.json(section);
 });
 
@@ -45,6 +45,6 @@ export const updateSection = asyncHandler(async (req: Request, res: Response) =>
 // @route   DELETE /api/section/:id
 export const deleteSection = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await locationService.deleteSection(id);
+  await locationService.deleteSection(id as string);
   res.json({ message: 'Section deleted successfully' });
 });
