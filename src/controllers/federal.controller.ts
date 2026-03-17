@@ -21,6 +21,13 @@ export const getMasterData = asyncHandler(async (req: Request, res: Response) =>
   res.json(result);
 });
 
+// @desc    Submit federal-level adjustments
+// @route   POST /api/federal/adjust
+export const postFederalAdjust = asyncHandler(async (req: Request, res: Response) => {
+  const result = await demandService.federalAdjust(req.body, req.user);
+  res.json(result);
+});
+
 // @desc    Get all farmer request details (MoA level)
 // @route   GET /api/federal/farmer-requests
 export const getFederalFarmerRequests = asyncHandler(async (req: Request, res: Response) => {

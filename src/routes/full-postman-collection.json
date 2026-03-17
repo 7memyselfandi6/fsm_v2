@@ -77,6 +77,18 @@
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/api/federal/farmer-requests?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "federal", "farmer-requests"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
           }
+        },
+        {
+          "name": "Federal Submit Adjustment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fertilizerTypeId\": \"FERT_UUID\",\n  \"adjustments\": [\n    { \"regionId\": \"REGION_UUID\", \"quantity\": 1000 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/federal/adjust", "host": ["{{baseUrl}}"], "path": ["api", "federal", "adjust"] }
+          }
         }
       ]
     },
