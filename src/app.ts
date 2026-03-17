@@ -4,6 +4,11 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yaml';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import locationRoutes from './routes/location.routes.js';
@@ -29,7 +34,15 @@ import reportRoutes from './routes/report.routes.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
+
+// Swagger Documentation
+const file = fs.readFileSync(path.resolve(__dirname, '../docs/openapi.yaml'), 'utf8');
+const swaggerDocument = YAML.parse(file);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Security Middlewares
 app.use(helmet());

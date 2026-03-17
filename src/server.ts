@@ -35,6 +35,7 @@ prisma.$connect()
     app.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`🚀 Server is humming on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📚 Swagger Docs: http://localhost:${PORT}/api-docs`);
     });
   })
   .catch((err) => {

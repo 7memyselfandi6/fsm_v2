@@ -1,0 +1,2037 @@
+openapi: 3.0.0
+info:
+  title: FMS API
+  description: >
+    The Ethiopian Fertilizer Digital Tracking & Management System (FMS) API
+    facilitates the management and tracking of fertilizer demands across
+    all administrative levels, including Kebele, Woreda, Zone, Region, and 
+    the Ministry of Agriculture (MoA).
+  version: 1.0.0
+
+servers:
+  - url: https://fsm-v2-1.onrender.com/api
+    description: Production Server
+  - url: http://localhost:5000/api
+    description: Local Development Server
+
+tags:
+  - name: Auth
+    description: Authentication and account management
+  - name: Kebele
+    description: Kebele-level demand operations
+  - name: Woreda
+    description: Woreda-level adjustment and tracking
+  - name: Zone
+    description: Zone-level consolidation and adjustments
+  - name: Demands
+    description: General fertilizer demand operations
+  - name: Farmers
+    description: Farmer registration and management
+  - name: Federal
+    description: Federal-level (MoA) operations and master data
+  - name: Reports
+    description: System-wide analytics and reporting
+  - name: Subsidy
+    description: Subsidy management and crop fertilizer rates
+  - name: Supply
+    description: Supply chain, inventory, and sales management
+  - name: Location
+    description: Geographic and administrative level management (Alternative API)
+  - name: Geo
+    description: Geographic and administrative level management
+  - name: System
+    description: System-wide configuration and metadata
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Base Models ---
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        username: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+        regionId: { type: string, format: uuid, nullable: true }
+        zoneId: { type: string, format: uuid, nullable: true }
+        woredaId: { type: string, format: uuid, nullable: true }
+        kebeleId: { type: string, format: uuid, nullable: true }
+        profilePictureUrl: { type: string, nullable: true }
+        moaPosition: { $ref: "#/components/schemas/MoaPosition" }
+        moaSector: { $ref: "#/components/schemas/MoaSector" }
+        moaLeadExecutive: { $ref: "#/components/schemas/MoaLeadExecutive" }
+        moaDesk: { type: string, nullable: true }
+
+    Farmer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        uniqueFarmerId: { type: string }
+        fullName: { type: string }
+        gender: { type: string, enum: [Male, Female] }
+        phoneNumber: { type: string }
+        address: { type: string }
+        farmAreaHectares: { type: number }
+        photoUrl: { type: string, nullable: true }
+        landCertificateUrl: { type: string, nullable: true }
+        kebeleId: { type: string, format: uuid }
+
+    FarmerDemand:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        farmerId: { type: string, format: uuid }
+        seasonId: { type: string, format: uuid }
+        cropTypeId: { type: string, format: uuid }
+        fertilizerTypeId: { type: string, format: uuid }
+        originalQuantity: { type: number }
+        kebeleAdjustedQuantity: { type: number, nullable: true }
+        woredaAdjustedQuantity: { type: number, nullable: true }
+        zoneAdjustedQuantity: { type: number, nullable: true }
+        regionAdjustedQuantity: { type: number, nullable: true }
+        moaAdjustedQuantity: { type: number, nullable: true }
+        status: { $ref: "#/components/schemas/DemandStatus" }
+        lockedAtLevel: { $ref: "#/components/schemas/LockingLevel" }
+
+    # --- Enums from Prisma ---
+    Role:
+      type: string
+      enum:
+        [
+          SUPER_ADMIN,
+          MOA_EXPERT,
+          MOA_MANAGER,
+          REGION_EXPERT,
+          REGION_MANAGER,
+          ZONE_EXPERT,
+          ZONE_MANAGER,
+          WOREDA_EXPERT,
+          WOREDA_MANAGER,
+          KEBELE_DA,
+          KEBELE_MANAGER,
+          PC_ACCOUNTANT,
+          PC_STOREMAN,
+          UNION_MEMBER,
+          FARMER,
+        ]
+
+    MoaPosition:
+      type: string
+      enum:
+        [MINISTER, STATE_MINISTER, LEAD_EXECUTIVE_MINISTER, DESK_HEAD, EXPERT]
+
+    MoaSector:
+      type: string
+      enum: [INPUT_AND_INVESTMENT, AGRICULTURE_AND_HORTICULTURE_INVESTMENT]
+
+    MoaLeadExecutive:
+      type: string
+      enum:
+        [
+          INPUT_LE,
+          CROP_LE,
+          HORTICULTURE_LE,
+          AGRICULTURE_AND_INVESTMENT_LE,
+          URBAN_LE,
+          COTTON_LE,
+        ]
+
+    DemandStatus:
+      type: string
+      enum: [PENDING, APPROVED, LOCKED]
+
+    LockingLevel:
+      type: string
+      enum: [NONE, KEBELE, WOREDA, ZONE, REGION, MOA]
+
+    # --- Common Responses ---
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        stack: { type: string }
+
+paths:
+  # --- Auth Endpoints ---
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login to get a JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber, password]
+              properties:
+                phoneNumber: { type: string, example: "+251911000007" }
+                password: { type: string, example: "password123" }
+      responses:
+        "200":
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/User"
+                  - type: object
+                    properties:
+                      token: { type: string }
+        "400":
+          description: Invalid input
+        "401":
+          description: Invalid credentials
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new staff user (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                fullName: { type: string }
+                username: { type: string }
+                email: { type: string }
+                phoneNumber: { type: string }
+                password: { type: string }
+                role: { $ref: "#/components/schemas/Role" }
+                profilePicture: { type: string, format: binary }
+      responses:
+        "201":
+          description: Registered successfully
+        "400":
+          description: User already exists
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout user and clear session/cookie
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Logged out successfully
+
+  # --- Demand Endpoints ---
+  /demands:
+    post:
+      tags: [Demands]
+      summary: Submit farmer demands in bulk
+      description: Public endpoint for submitting fertilizer requests for a farmer identified by uniqueFarmerId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [uniqueFarmerId, seasonName, cropTypeIds, fertilizers]
+              properties:
+                uniqueFarmerId: { type: string, example: "ETH-2024-F123" }
+                seasonName: { type: string, example: "Meher" }
+                cropTypeIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                fertilizers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      fertilizerTypeId: { type: string, format: uuid }
+                      quantity: { type: number }
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  count: { type: number }
+
+  /demands/seasons:
+    get:
+      tags: [Demands]
+      summary: Get all seasons
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/crops:
+    get:
+      tags: [Demands]
+      summary: Get crop categories
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/fertilizers:
+    get:
+      tags: [Demands]
+      summary: Get fertilizer types
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/dashboard-summary:
+    get:
+      tags: [Demands]
+      summary: Get demand dashboard summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 5 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /demands/detail-list:
+    get:
+      tags: [Demands]
+      summary: Get detailed list of demands with search and scoping
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          description: Search term
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: fertilizerType
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /demands/woreda-summary:
+    get:
+      tags: [Demands]
+      summary: Get Woreda-level summary
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/woreda-detail-list:
+    get:
+      tags: [Demands]
+      summary: Get Woreda-level detailed list
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: kebeleId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /demands/woreda-adjustment-table:
+    get:
+      tags: [Demands]
+      summary: Get Woreda-level adjustment table
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/woreda-adjust:
+    patch:
+      tags: [Demands]
+      summary: Adjust Woreda-level demand (Distribute across Kebeles)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+  /demands/zone-summary:
+    get:
+      tags: [Demands]
+      summary: Get Zone-level summary
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/zone-adjustment-table:
+    get:
+      tags: [Demands]
+      summary: Get Zone-level adjustment table
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /demands/{id}/adjust:
+    put:
+      tags: [Demands]
+      summary: Adjust farmer demand (Approved quantity)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [adjustedQuantity]
+              properties:
+                adjustedQuantity: { type: number }
+                level:
+                  { type: string, enum: [KEBELE, WOREDA, ZONE, REGION, MOA] }
+      responses:
+        "200":
+          description: Success
+
+  /demands/{id}:
+    put:
+      tags: [Demands]
+      summary: Edit a demand (Kebele level edit while PENDING)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                originalQuantity: { type: number }
+                fertilizerTypeId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Demands]
+      summary: Delete a demand (Only if PENDING)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted successfully
+
+  # --- Woreda Endpoints ---
+  /woreda/dashboard-summary:
+    get:
+      tags: [Woreda]
+      summary: Get Woreda-level dashboard summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          schema: { type: string, example: "Meher" }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /woreda/detail-list:
+    get:
+      tags: [Woreda]
+      summary: Get detailed list of Kebele demands for a Woreda
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: fertilizerType
+          in: query
+          schema: { type: string }
+        - name: kebeleId
+          in: query
+          schema: { type: string }
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /woreda/adjustment-table:
+    get:
+      tags: [Woreda]
+      summary: Get Woreda adjustment table
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /woreda/lock:
+    post:
+      tags: [Woreda]
+      summary: Lock or unlock a Kebele's demands
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kebeleId: { type: string, format: uuid }
+                lock: { type: boolean }
+      responses:
+        "200":
+          description: Success
+
+  /woreda/adjust:
+    post:
+      tags: [Woreda]
+      summary: Adjust quantities for specific Kebeles
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fertilizerTypeId: { type: string, format: uuid }
+                adjustments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      kebeleId: { type: string, format: uuid }
+                      quantity: { type: number }
+      responses:
+        "200":
+          description: Success
+
+  # --- Zone Endpoints ---
+  /zone/dashboard-summary:
+    get:
+      tags: [Zone]
+      summary: Get Zone-level dashboard summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          schema: { type: string, example: "Meher" }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /zone/detail-list:
+    get:
+      tags: [Zone]
+      summary: Get detailed list of farmer requests scoped to a Zone
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: fertilizerType
+          in: query
+          schema: { type: string }
+        - name: woredaId
+          in: query
+          schema: { type: string }
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /zone/adjustment-table:
+    get:
+      tags: [Zone]
+      summary: Get Zone adjustment table
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /zone/lock:
+    post:
+      tags: [Zone]
+      summary: Lock or unlock a Woreda's demands
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                woredaId: { type: string, format: uuid }
+                lock: { type: boolean }
+      responses:
+        "200":
+          description: Success
+
+  /zone/adjust:
+    post:
+      tags: [Zone]
+      summary: Submit Zone-level adjustment for multiple Woredas
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fertilizerTypeId: { type: string, format: uuid }
+                adjustments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      woredaId: { type: string, format: uuid }
+                      quantity: { type: number }
+      responses:
+        "200":
+          description: Success
+
+  # --- Kebele Endpoints ---
+  /kebele/dashboard-summary:
+    get:
+      tags: [Kebele]
+      summary: Get Kebele-level dashboard summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          schema: { type: string, example: "Meher" }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /kebele/detail-list:
+    get:
+      tags: [Kebele]
+      summary: Get detailed list of farmer requests for a Kebele
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: fertilizerType
+          in: query
+          schema: { type: string }
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /kebele/adjustment-table:
+    get:
+      tags: [Kebele]
+      summary: Get Kebele adjustment table
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /kebele/lock:
+    post:
+      tags: [Kebele]
+      summary: Lock or unlock a Kebele's demands
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lock: { type: boolean }
+      responses:
+        "200":
+          description: Success
+
+  /kebele/adjust:
+    post:
+      tags: [Kebele]
+      summary: Submit Kebele-level adjustment for a specific fertilizer type
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fertilizerTypeId: { type: string, format: uuid }
+                quantity: { type: number }
+      responses:
+        "200":
+          description: Success
+
+  /kebele:
+    get:
+      tags: [Kebele]
+      summary: Get all kebeles
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: woredaId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    post:
+      tags: [Kebele]
+      summary: Create a new kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, woredaId]
+              properties:
+                name: { type: string }
+                woredaId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /kebele/{id}:
+    get:
+      tags: [Kebele]
+      summary: Get a single kebele by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    put:
+      tags: [Kebele]
+      summary: Update a kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                woredaId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Kebele]
+      summary: Delete a kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+
+  # --- Farmers Endpoints ---
+  /farmers:
+    post:
+      tags: [Farmers]
+      summary: Register a new farmer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                [fullName, gender, phoneNumber, address, farmAreaHectares]
+              properties:
+                fullName: { type: string }
+                gender: { type: string, enum: [Male, Female] }
+                phoneNumber: { type: string }
+                address: { type: string }
+                farmAreaHectares: { type: number }
+                photo: { type: string, format: binary }
+                landCertificate: { type: string, format: binary }
+      responses:
+        "201":
+          description: Farmer registered successfully
+
+  /farmers/search/{uniqueFarmerId}:
+    get:
+      tags: [Farmers]
+      summary: Search farmer by unique ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: uniqueFarmerId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Successful retrieval
+
+  /farmers/lookup/{phoneNumber}:
+    get:
+      tags: [Farmers]
+      summary: Look up farmer ID by phone number
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: phoneNumber
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /farmers/{uniqueFarmerId}:
+    get:
+      tags: [Farmers]
+      summary: Get farmer details by unique ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: uniqueFarmerId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /farmers/kebele/{kebeleId}:
+    get:
+      tags: [Farmers]
+      summary: Get all farmers in a specific Kebele
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: kebeleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /farmers/{id}:
+    put:
+      tags: [Farmers]
+      summary: Update farmer details (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Farmer"
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Farmers]
+      summary: Delete a farmer (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+
+  # --- Federal Endpoints ---
+  /federal/dashboard:
+    get:
+      tags: [Federal]
+      summary: Get Federal (MoA) level dashboard summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /federal/master-data:
+    get:
+      tags: [Federal]
+      summary: Get Master Data (Unions, Destinations, PCs, LOTs)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /federal/farmer-requests:
+    get:
+      tags: [Federal]
+      summary: Get all farmer requests (Federal level)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: fertilizerType
+          in: query
+          schema: { type: string }
+        - name: regionId
+          in: query
+          schema: { type: string }
+        - name: zoneId
+          in: query
+          schema: { type: string }
+        - name: woredaId
+          in: query
+          schema: { type: string }
+        - name: kebeleId
+          in: query
+          schema: { type: string }
+        - name: seasonName
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  # --- Fertilizer Endpoints ---
+  /fertilizer-types:
+    get:
+      tags: [System]
+      summary: Get all fertilizer types with metadata
+      responses:
+        "200":
+          description: Success
+    post:
+      tags: [System]
+      summary: Add a new fertilizer type definition (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Created
+
+  # --- Geo Endpoints ---
+  /geo/regions:
+    get:
+      tags: [Geo]
+      summary: Get all regions (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /geo/zones:
+    get:
+      tags: [Geo]
+      summary: Get zones based on role and regionId
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: regionId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /geo/woredas:
+    get:
+      tags: [Geo]
+      summary: Get woredas based on role and zoneId
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: zoneId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /geo/kebeles:
+    get:
+      tags: [Geo]
+      summary: Get kebeles based on role and woredaId
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: woredaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  # --- Reports Endpoints ---
+  /reports/regional-allocation:
+    get:
+      tags: [Reports]
+      summary: Get regional fertilizer allocation report
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: seasonId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /reports/union-stock:
+    get:
+      tags: [Reports]
+      summary: Get union-level fertilizer stock report
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /reports/sold-fertilizer:
+    get:
+      tags: [Reports]
+      summary: Get sold fertilizer tracking report
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /reports/revenue:
+    get:
+      tags: [Reports]
+      summary: Get revenue calculation report
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /reports/export/google-sheets:
+    post:
+      tags: [Reports]
+      summary: Export report to Google Sheets
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportType]
+              properties:
+                reportType: { type: string, example: "SALES" }
+      responses:
+        "200":
+          description: Export triggered
+
+  # --- Section Endpoints ---
+  /section:
+    get:
+      tags: [Section]
+      summary: Get all sections in a Kebele
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: kebeleId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    post:
+      tags: [Section]
+      summary: Create a new section (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, kebeleId]
+              properties:
+                name: { type: string }
+                kebeleId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /section/{id}:
+    get:
+      tags: [Section]
+      summary: Get a single section by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    put:
+      tags: [Section]
+      summary: Update a section (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Section]
+      summary: Delete a section (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+
+  # --- Subsidy Endpoints ---
+  /subsidy/reports:
+    get:
+      tags: [Subsidy]
+      summary: Get all subsidy reports
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: year
+          in: query
+          schema: { type: string }
+        - name: regionId
+          in: query
+          schema: { type: string }
+        - name: fertilizerTypeId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  /subsidy/records:
+    post:
+      tags: [Subsidy]
+      summary: Create a new subsidy record (Federal level only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Created
+
+  /subsidy/crop-rates:
+    get:
+      tags: [Subsidy]
+      summary: Get all crop fertilizer rates
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /subsidy/crop-rates/{id}:
+    put:
+      tags: [Subsidy]
+      summary: Update crop fertilizer rate (Federal level only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Updated
+
+  /subsidy/crop-rates/{id}/lock:
+    patch:
+      tags: [Subsidy]
+      summary: Toggle rate lock (Federal level only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isLocked]
+              properties:
+                isLocked: { type: boolean }
+      responses:
+        "200":
+          description: Toggled
+
+  # --- Supply Endpoints ---
+  /supply/lots:
+    get:
+      tags: [Supply]
+      summary: Get all shipping lots
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /supply/unions:
+    get:
+      tags: [Supply]
+      summary: Get all Unions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /supply/destinations:
+    get:
+      tags: [Supply]
+      summary: Get all destinations
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /supply/pcs:
+    get:
+      tags: [Supply]
+      summary: Get all Primary Cooperatives (PCs)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /supply/inventory/{pcId}:
+    get:
+      tags: [Supply]
+      summary: Get inventory for a specific PC
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: pcId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /supply/sales/initiate:
+    post:
+      tags: [Supply]
+      summary: Initiate a farmer sale (Accountant only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                [
+                  farmerId,
+                  pcId,
+                  fertilizerTypeId,
+                  quantity,
+                  totalPrice,
+                  paymentMethod,
+                ]
+              properties:
+                farmerId: { type: string, format: uuid }
+                pcId: { type: string, format: uuid }
+                fertilizerTypeId: { type: string, format: uuid }
+                quantity: { type: number }
+                totalPrice: { type: number }
+                paymentMethod: { type: string, enum: [CASH, CREDIT, SUBSIDY] }
+      responses:
+        "201":
+          description: Initiated
+
+  /supply/sales/{id}/deliver:
+    put:
+      tags: [Supply]
+      summary: Deliver physical fertilizer (Storeman only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Delivered
+
+  /supply/sales/pc/{pcId}:
+    get:
+      tags: [Supply]
+      summary: Get sales records for a specific PC
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: pcId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+
+  # --- Warehouse Endpoints ---
+  /warehouses:
+    get:
+      tags: [Supply]
+      summary: Get all warehouses with filtering
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: regionId
+          in: query
+          schema: { type: string }
+        - name: minCapacity
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Success
+    post:
+      tags: [Supply]
+      summary: Create a new warehouse (Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Created
+
+  /warehouses/{id}:
+    get:
+      tags: [Supply]
+      summary: Get a single warehouse by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    put:
+      tags: [Supply]
+      summary: Update a warehouse (Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Supply]
+      summary: Delete a warehouse (Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+
+  # --- Admin Endpoints ---
+  /admin/regions:
+    post:
+      tags: [Admin]
+      summary: Create a new region (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Created
+
+  /admin/regions/{id}/flag:
+    patch:
+      tags: [Admin]
+      summary: Update or create a region flag
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                flag: { type: string, format: binary }
+                name: { type: string }
+                category: { type: string }
+      responses:
+        "200":
+          description: Updated
+
+  /admin/zones:
+    post:
+      tags: [Admin]
+      summary: Create a new zone (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, regionId]
+              properties:
+                name: { type: string }
+                regionId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /admin/woredas:
+    post:
+      tags: [Admin]
+      summary: Create a new woreda (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, zoneId]
+              properties:
+                name: { type: string }
+                zoneId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /admin/kebeles:
+    post:
+      tags: [Admin]
+      summary: Create a new kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, woredaId]
+              properties:
+                name: { type: string }
+                woredaId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /admin/unions:
+    post:
+      tags: [Admin]
+      summary: Create a new union (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, regionId]
+              properties:
+                name: { type: string }
+                regionId: { type: string, format: uuid }
+                zoneId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /admin/destinations:
+    post:
+      tags: [Admin]
+      summary: Create a new destination (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, unionId]
+              properties:
+                name: { type: string }
+                unionId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /admin/pcs:
+    post:
+      tags: [Admin]
+      summary: Create a new Primary Cooperative (PC) (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, kebeleId, destinationId]
+              properties:
+                name: { type: string }
+                kebeleId: { type: string, format: uuid }
+                destinationId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  # --- User Endpoints ---
+  /users:
+    get:
+      tags: [Users]
+      summary: Get users with role-based scoping and search
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: role
+          in: query
+          schema: { $ref: "#/components/schemas/Role" }
+        - name: unionId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: pcId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Success
+
+  /users/{id}:
+    put:
+      tags: [Users]
+      summary: Update user information
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "200":
+          description: Updated
+
+  # --- Location Endpoints ---
+  /locations/regions:
+    get:
+      tags: [Location]
+      summary: Get all regions
+      responses:
+        "200":
+          description: Success
+
+  /locations/zones/{regionId}:
+    get:
+      tags: [Location]
+      summary: Get zones by region ID
+      parameters:
+        - name: regionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /locations/woredas/{zoneId}:
+    get:
+      tags: [Location]
+      summary: Get woredas by zone ID
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /locations/kebeles/{woredaId}:
+    get:
+      tags: [Location]
+      summary: Get kebeles by woreda ID
+      parameters:
+        - name: woredaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /locations/sections/{kebeleId}:
+    get:
+      tags: [Location]
+      summary: Get sections by kebele ID
+      parameters:
+        - name: kebeleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+
+  /locations/kebeles:
+    post:
+      tags: [Location]
+      summary: Create a new kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, woredaId]
+              properties:
+                name: { type: string }
+                woredaId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /locations/kebeles/{id}:
+    put:
+      tags: [Location]
+      summary: Update a kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                woredaId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Location]
+      summary: Delete a kebele (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+
+  /locations/sections:
+    post:
+      tags: [Location]
+      summary: Create a new section (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, kebeleId]
+              properties:
+                name: { type: string }
+                kebeleId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /locations/sections/{id}:
+    put:
+      tags: [Location]
+      summary: Update a section (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                kebeleId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Location]
+      summary: Delete a section (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+
+  # --- System Endpoints ---
+  /flags:
+    get:
+      tags: [System]
+      summary: Retrieve regional flags or indicators
+      responses:
+        "200":
+          description: Success
+
+  /system/dates:
+    get:
+      tags: [System]
+      summary: Get insertion dates for major entities (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Success
+
+  /system/init-demand-form:
+    get:
+      tags: [System]
+      summary: Initialize metadata for the demand submission form
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  seasons:
+                    type: array
+                    items: { type: object }
+                  crops:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items: { type: object }
+                  fertilizerTypes:
+                    type: array
+                    items: { type: object }
+
+  /crops:
+    get:
+      tags: [System]
+      summary: Get all crop types with pagination and filtering
+      parameters:
+        - name: categoryId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Success
+    post:
+      tags: [System]
+      summary: Create a new crop entry (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, categoryId]
+              properties:
+                name: { type: string }
+                categoryId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+
+  /crops/{id}:
+    get:
+      tags: [System]
+      summary: Get a single crop by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    put:
+      tags: [System]
+      summary: Update crop information (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                categoryId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated
+
+  /seasons:
+    get:
+      tags: [System]
+      summary: Get all seasons with hierarchical location filtering
+      parameters:
+        - name: regionId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: zoneId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: woredaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: kebeleId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Success
+    post:
+      tags: [System]
+      summary: Create a new season (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Created
+  /seasons/{id}:
+    put:
+      tags: [System]
+      summary: Update season details (Super Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        "200":
+          description: Updated
