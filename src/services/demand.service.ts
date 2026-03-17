@@ -752,7 +752,7 @@ export const getDemandById = async (id: string) => {
 
 export const getRegionSummary = async (user: any, seasonName?: string) => {
   const { regionId, role } = user;
-  const [region, activeSeason, flag] = await Promise.all([
+  const [region, activeSeason, flag, allLots] = await Promise.all([
     prisma.region.findUnique({
       where: { id: regionId },
       include: {
@@ -773,15 +773,6 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
                   include: {
                     kebele: true
                   }
-                },
-                lotDispatches: {
-                  include: {
-                    lot: {
-                      include: {
-                        fertilizerType: true
-                      }
-                    }
-                  }
                 }
               }
             }
@@ -790,10 +781,32 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
       }
     }),
     getActiveSeason(seasonName),
-    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId),
+    prisma.shippingLot.findMany({
+      include: {
+        fertilizerType: true
+      }
+    })
   ]);
 
   if (!activeSeason || !region) return null;
+
+  // Validation: lots array should not be empty and each lot must have an ID
+  if (!allLots || allLots.length === 0) {
+    throw new Error('No fertilizer lots found in the system');
+  }
+
+  const lots = allLots.map(l => {
+    if (!l.id) throw new Error(`Lot record missing unique identifier: ${l.lotNumber}`);
+    return {
+      id: l.id,
+      lotNumber: l.lotNumber,
+      totalFertilizerAmount: `${l.totalQuantity} Qt`,
+      ureaAmount: `${l.ureaAmount || 0} Qt`,
+      dapAmount: `${l.dapAmount || 0} Qt`,
+      fertilizerType: l.fertilizerType.name
+    };
+  });
 
   const demands = await prisma.farmerDemand.findMany({
     where: { 
@@ -965,16 +978,6 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
             pcBreakdown[type].adjusted += effective;
           });
 
-          // LOT details from Destination dispatches
-          const lots = dest.lotDispatches.map(ld => ({
-            lotId: ld.lot.id,
-            lotNumber: ld.lot.lotNumber,
-            totalFertilizerAmount: `${ld.lot.totalQuantity} Qt`,
-            ureaAmount: `${ld.lot.ureaAmount || 0} Qt`,
-            dapAmount: `${ld.lot.dapAmount || 0} Qt`,
-            fertilizerType: ld.lot.fertilizerType.name
-          }));
-
           return {
             pcId: pc.id,
             pcName: pc.name,
@@ -986,8 +989,7 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
               type,
               originalAmount: `${counts.original} Qt`,
               adjustedAmount: `${counts.adjusted} Qt`
-            })),
-            lots
+            }))
           };
         })
       })),
@@ -1012,7 +1014,8 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
       adjustedAmount: `${regionAdjustedSummaryMap[type]} Qt`
     })),
     zones,
-    unions
+    unions,
+    lots
   };
 };
 
