@@ -750,6 +750,54 @@ export const getDemandById = async (id: string) => {
 
 /** --- REGION MODULE --- **/
 
+/**
+ * Validates lot data consistency.
+ * Rules:
+ * - ureaAmount and dapAmount must be non-negative.
+ * - totalQuantity must be equal to the sum of ureaAmount and dapAmount.
+ */
+export const validateLotData = (data: { ureaAmount?: number, dapAmount?: number, totalQuantity: number }) => {
+  const urea = data.ureaAmount || 0;
+  const dap = data.dapAmount || 0;
+  if (urea < 0 || dap < 0) {
+    throw new Error('Fertilizer amounts cannot be negative');
+  }
+  if (Math.abs(urea + dap - data.totalQuantity) > 0.01) {
+    throw new Error('Total quantity must be the sum of urea and dap amounts');
+  }
+};
+
+/**
+ * Helper to calculate lot composition and total amount.
+ * 
+ * Business Rules:
+ * - totalFertilizerAmount = ureaAmount + dapAmount
+ * - fertilizerType is derived from the amounts:
+ *   - Both > 0: "Urea & DAP"
+ *   - Urea > 0: "Urea"
+ *   - DAP > 0: "DAP"
+ *   - Both <= 0: "None"
+ */
+export const mapLotResponse = (l: any) => {
+  const urea = l.ureaAmount || 0;
+  const dap = l.dapAmount || 0;
+  const total = urea + dap;
+
+  let type = 'None';
+  if (urea > 0 && dap > 0) type = 'Urea & DAP';
+  else if (urea > 0) type = 'Urea';
+  else if (dap > 0) type = 'DAP';
+
+  return {
+    id: l.id,
+    lotNumber: l.lotNumber,
+    totalFertilizerAmount: `${total} Qt`,
+    ureaAmount: `${urea} Qt`,
+    dapAmount: `${dap} Qt`,
+    fertilizerType: type
+  };
+};
+
 export const getRegionSummary = async (user: any, seasonName?: string) => {
   const { regionId, role } = user;
   const [region, activeSeason, flag, allLots] = await Promise.all([
@@ -798,14 +846,7 @@ export const getRegionSummary = async (user: any, seasonName?: string) => {
 
   const lots = allLots.map(l => {
     if (!l.id) throw new Error(`Lot record missing unique identifier: ${l.lotNumber}`);
-    return {
-      id: l.id,
-      lotNumber: l.lotNumber,
-      totalFertilizerAmount: `${l.totalQuantity} Qt`,
-      ureaAmount: `${l.ureaAmount || 0} Qt`,
-      dapAmount: `${l.dapAmount || 0} Qt`,
-      fertilizerType: l.fertilizerType.name
-    };
+    return mapLotResponse(l);
   });
 
   const demands = await prisma.farmerDemand.findMany({
@@ -1397,14 +1438,7 @@ export const getMasterData = async () => {
         union: p.destination.union.name
       }
     })),
-    lots: lots.map(l => ({
-      id: l.id,
-      lotNumber: l.lotNumber,
-      fertilizerType: l.fertilizerType.name,
-      totalQuantity: l.totalQuantity,
-      ureaAmount: l.ureaAmount,
-      dapAmount: l.dapAmount
-    }))
+    lots: lots.map(l => mapLotResponse(l))
   };
 };
 
