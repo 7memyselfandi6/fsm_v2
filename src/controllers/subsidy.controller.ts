@@ -35,7 +35,7 @@ export const getCropFertilizerRates = asyncHandler(async (req: Request, res: Res
 // @desc    Update crop fertilizer rate
 // @route   PUT /api/subsidy/crop-rates/:id
 export const updateCropFertilizerRate = asyncHandler(async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const rate = await subsidyService.updateCropFertilizerRate(id, req.body);
   res.json(rate);
 });
@@ -43,7 +43,7 @@ export const updateCropFertilizerRate = asyncHandler(async (req: Request, res: R
 // @desc    Toggle rate lock
 // @route   PATCH /api/subsidy/crop-rates/:id/lock
 export const toggleRateLock = asyncHandler(async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const { isLocked } = req.body;
   const rate = await subsidyService.toggleRateLock(id, isLocked);
   res.json(rate);

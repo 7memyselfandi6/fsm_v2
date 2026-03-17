@@ -76,7 +76,7 @@ export const createKebele = asyncHandler(async (req: Request, res: Response) => 
 // @access  Private (SUPER_ADMIN)
 export const updateKebele = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const kebele = await locationService.updateKebele(id, req.body);
+  const kebele = await locationService.updateKebele(id as string, req.body);
   res.json(kebele);
 });
 
@@ -85,7 +85,7 @@ export const updateKebele = asyncHandler(async (req: Request, res: Response) => 
 // @access  Private (SUPER_ADMIN)
 export const deleteKebele = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await locationService.deleteKebele(id);
+  await locationService.deleteKebele(id as string);
   res.json({ message: 'Kebele deleted successfully' });
 });
 
@@ -103,7 +103,7 @@ export const createSection = asyncHandler(async (req: Request, res: Response) =>
 // @access  Private (SUPER_ADMIN)
 export const updateSection = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const section = await locationService.updateSection(id, req.body);
+  const section = await locationService.updateSection(id as string, req.body);
   res.json(section);
 });
 
@@ -112,6 +112,6 @@ export const updateSection = asyncHandler(async (req: Request, res: Response) =>
 // @access  Private (SUPER_ADMIN)
 export const deleteSection = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await locationService.deleteSection(id);
+  await locationService.deleteSection(id as string);
   res.json({ message: 'Section deleted successfully' });
 });

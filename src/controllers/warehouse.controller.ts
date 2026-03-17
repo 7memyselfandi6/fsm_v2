@@ -36,7 +36,7 @@ export const getWarehouses = asyncHandler(async (req: Request, res: Response) =>
 // @route   GET /api/warehouses/:id
 export const getWarehouseById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const warehouse = await warehouseService.getWarehouseById(id);
+  const warehouse = await warehouseService.getWarehouseById(id as string);
   if (!warehouse) {
     res.status(404);
     throw new Error('Warehouse not found');
@@ -55,7 +55,7 @@ export const createWarehouse = asyncHandler(async (req: Request, res: Response) 
 // @route   PUT /api/warehouses/:id
 export const updateWarehouse = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const warehouse = await warehouseService.updateWarehouse(id, req.body);
+  const warehouse = await warehouseService.updateWarehouse(id as string, req.body);
   res.json(warehouse);
 });
 
@@ -63,6 +63,6 @@ export const updateWarehouse = asyncHandler(async (req: Request, res: Response) 
 // @route   DELETE /api/warehouses/:id
 export const deleteWarehouse = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await warehouseService.deleteWarehouse(id);
+  await warehouseService.deleteWarehouse(id as string);
   res.json({ message: 'Warehouse deleted successfully' });
 });
