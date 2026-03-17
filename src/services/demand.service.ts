@@ -96,6 +96,7 @@ export const getWoredaSummary = async (user: any, seasonName?: string) => {
   });
 
   return {
+    woredaId,
     woredaName: woreda.name,
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
@@ -104,7 +105,12 @@ export const getWoredaSummary = async (user: any, seasonName?: string) => {
       type, 
       amount: `${amount} Qt` 
     })),
-    kebeles: Object.values(kebeleSummaries)
+    kebeles: Object.entries(kebeleSummaries).map(([kid, k]) => ({
+      kebeleId: kid,
+      kebeleName: k.name,
+      totalAmount: `${k.totalAmount} Qt`,
+      fertilizerBreakdown: k.fertilizerBreakdown
+    }))
   };
 };
 
@@ -296,6 +302,7 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
   });
 
   return {
+    zoneId,
     zoneName: zone.name,
     productionSeason: activeSeason.name,
     regionalFlagUrl: flag?.imageUrl,
@@ -462,9 +469,13 @@ export const getDemandDetailList = async (params: any, scope: any) => {
     farmerName: d.farmer.fullName, 
     uniqueFarmerId: d.farmer.uniqueFarmerId,
     sex: d.farmer.gender, 
+    kebeleId: d.farmer.kebeleId,
     kebele: d.farmer.kebele.name, 
+    woredaId: d.farmer.kebele.woredaId,
     woreda: d.farmer.kebele.woreda.name,
+    zoneId: d.farmer.kebele.woreda.zoneId,
     zone: d.farmer.kebele.woreda.zone.name, 
+    regionId: d.farmer.kebele.woreda.zone.regionId,
     fertilizerType: d.fertilizerType.name,
     seasonName: d.season.name, 
     amount: `${d.originalQuantity} Qt`, 
@@ -544,7 +555,436 @@ export const getDemandById = async (id: string) => {
 //   throw new Error('Function not implemented.');
 // }
 
-export function updateFarmerDemand(arg0: string, arg1: { originalQuantity: number; fertilizerTypeId: any; }) {
-  throw new Error('Function not implemented.');
-}
+/** --- REGION MODULE --- **/
+
+export const getRegionSummary = async (user: any, seasonName?: string) => {
+  const { regionId, role } = user;
+  const [region, activeSeason, flag] = await Promise.all([
+    prisma.region.findUnique({ 
+      where: { id: regionId },
+      include: { 
+        zones: {
+          include: { 
+            woredas: {
+              include: { kebeles: true }
+            }
+          }
+        }
+      }
+    }),
+    getActiveSeason(seasonName),
+    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+  ]);
+
+  if (!activeSeason || !region) return null;
+
+  const demands = await prisma.farmerDemand.findMany({
+    where: { 
+      seasonId: activeSeason.id, 
+      farmer: { kebele: { woreda: { zone: { regionId } } } } 
+    },
+    include: { 
+      fertilizerType: true,
+      farmer: { 
+        include: { 
+          kebele: { 
+            include: { woreda: { include: { zone: true } } } 
+          } 
+        } 
+      }
+    }
+  });
+
+  // Aggregators
+  const regionSummaryMap: Record<string, number> = {};
+  let regionTotalAmount = 0;
+
+  // Hierarchical Structure: Zone -> Woreda -> Kebele
+  const zoneData: Record<string, any> = {};
+
+  // Initialize Structure
+  region.zones.forEach(z => {
+    zoneData[z.id] = { name: z.name, totalAmount: 0, fertilizerBreakdown: [], woredas: {} };
+    z.woredas.forEach(w => {
+      zoneData[z.id].woredas[w.id] = { name: w.name, totalAmount: 0, fertilizerBreakdown: [], kebeles: {} };
+      w.kebeles.forEach(k => {
+        zoneData[z.id].woredas[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, fertilizerBreakdown: [] };
+      });
+    });
+  });
+
+  const zoneFertilizerMaps: Record<string, Record<string, number>> = {};
+  const woredaFertilizerMaps: Record<string, Record<string, number>> = {};
+  const kebeleFertilizerMaps: Record<string, Record<string, number>> = {};
+
+  demands.forEach(d => {
+    const type = d.fertilizerType.name;
+    const kid = d.farmer.kebeleId;
+    const wid = d.farmer.kebele.woredaId;
+    const zid = d.farmer.kebele.woreda.zoneId;
+
+    // Region aggregation
+    regionSummaryMap[type] = (regionSummaryMap[type] || 0) + d.originalQuantity;
+    regionTotalAmount += d.originalQuantity;
+
+    // Zone aggregation
+    if (zoneData[zid]) {
+      zoneData[zid].totalAmount += d.originalQuantity;
+      if (!zoneFertilizerMaps[zid]) zoneFertilizerMaps[zid] = {};
+      zoneFertilizerMaps[zid][type] = (zoneFertilizerMaps[zid][type] || 0) + d.originalQuantity;
+
+      // Woreda aggregation
+      if (zoneData[zid].woredas[wid]) {
+        zoneData[zid].woredas[wid].totalAmount += d.originalQuantity;
+        if (!woredaFertilizerMaps[wid]) woredaFertilizerMaps[wid] = {};
+        woredaFertilizerMaps[wid][type] = (woredaFertilizerMaps[wid][type] || 0) + d.originalQuantity;
+
+        // Kebele aggregation
+        if (zoneData[zid].woredas[wid].kebeles[kid]) {
+          zoneData[zid].woredas[wid].kebeles[kid].totalAmount += d.originalQuantity;
+          if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
+          kebeleFertilizerMaps[kid][type] = (kebeleFertilizerMaps[kid][type] || 0) + d.originalQuantity;
+        }
+      }
+    }
+  });
+
+  // Final Transformation
+  const zones = Object.entries(zoneData).map(([zid, z]) => {
+    const zoneFertMap = zoneFertilizerMaps[zid] || {};
+    return {
+      zoneId: zid,
+      zoneName: z.name,
+      totalAmount: `${z.totalAmount} Qt`,
+      fertilizerBreakdown: Object.entries(zoneFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+      woredas: Object.entries(z.woredas).map(([wid, w]: [string, any]) => {
+        const woredaFertMap = woredaFertilizerMaps[wid] || {};
+        return {
+          woredaId: wid,
+          woredaName: w.name,
+          totalAmount: `${w.totalAmount} Qt`,
+          fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+          kebeles: Object.entries(w.kebeles).map(([kid, k]: [string, any]) => {
+            const kebeleFertMap = kebeleFertilizerMaps[kid] || {};
+            return {
+              kebeleId: kid,
+              kebeleName: k.name,
+              totalAmount: `${k.totalAmount} Qt`,
+              fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, amount]) => ({ type, amount: `${amount} Qt` }))
+            };
+          })
+        };
+      })
+    };
+  });
+
+  return {
+    regionId,
+    regionName: region.name,
+    productionSeason: activeSeason.name,
+    regionalFlagUrl: flag?.imageUrl,
+    totalAmount: `${regionTotalAmount} Qt`,
+    fertilizerBreakdown: Object.entries(regionSummaryMap).map(([type, amount]) => ({ 
+      type, 
+      amount: `${amount} Qt` 
+    })),
+    zones
+  };
+};
+
+export const getRegionAdjustmentTable = async (user: any, seasonName?: string) => {
+  const { regionId } = user;
+  const activeSeason = await getActiveSeason(seasonName);
+  if (!activeSeason) return null;
+
+  const zones = await prisma.zone.findMany({
+    where: { regionId },
+    include: {
+      woredas: {
+        include: {
+          kebeles: {
+            include: {
+              farmers: {
+                include: {
+                  demands: {
+                    where: { seasonId: activeSeason.id },
+                    include: { fertilizerType: true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const result = zones.map(z => {
+    const summaryMap: Record<string, any> = {};
+    z.woredas.forEach(w => {
+      w.kebeles.forEach(k => {
+        k.farmers.forEach(f => {
+          f.demands.forEach(d => {
+            const type = d.fertilizerType.name;
+            const typeId = d.fertilizerTypeId;
+            if (!summaryMap[typeId]) {
+              summaryMap[typeId] = {
+                fertilizerType: type,
+                fertilizerTypeId: typeId,
+                collectedQty: 0,
+                zoneAdjustedQty: 0,
+                regionAdjustedQty: 0
+              };
+            }
+            summaryMap[typeId].collectedQty += d.originalQuantity;
+            summaryMap[typeId].zoneAdjustedQty += d.zoneAdjustedQuantity || 0;
+            summaryMap[typeId].regionAdjustedQty += d.regionAdjustedQuantity || 0;
+          });
+        });
+      });
+    });
+    return {
+      zoneName: z.name,
+      zoneId: z.id,
+      adjustments: Object.values(summaryMap)
+    };
+  });
+
+  const lockStatus = await prisma.farmerDemand.findFirst({
+    where: { 
+      seasonId: activeSeason.id, 
+      farmer: { kebele: { woreda: { zone: { regionId } } } }, 
+      lockedAtLevel: { in: [LockingLevel.REGION, LockingLevel.MOA] } 
+    },
+    select: { lockedAtLevel: true }
+  });
+
+  return {
+    adjustmentTable: result,
+    lockingStatus: {
+      isLocked: !!lockStatus,
+      lockedAt: lockStatus?.lockedAtLevel || 'NONE'
+    }
+  };
+};
+
+export const regionAdjust = async (data: any, user: any) => {
+  const { fertilizerTypeId, adjustments } = data; // adjustments: [{ zoneId, quantity }]
+  const { regionId } = user;
+
+  return await prisma.$transaction(async (tx) => {
+    for (const adj of adjustments) {
+      const isLocked = await tx.farmerDemand.findFirst({
+        where: { 
+          farmer: { kebele: { woreda: { zone: { id: adj.zoneId, regionId } } } }, 
+          fertilizerTypeId, 
+          lockedAtLevel: { in: [LockingLevel.REGION, LockingLevel.MOA] } 
+        }
+      });
+      if (isLocked) throw new Error(`Zone ${adj.zoneId} is locked at ${isLocked.lockedAtLevel} level`);
+
+      await tx.farmerDemand.updateMany({
+        where: { farmer: { kebele: { woreda: { zone: { id: adj.zoneId, regionId } } } }, fertilizerTypeId },
+        data: { regionAdjustedQuantity: adj.quantity, status: DemandStatus.APPROVED, lockedAtLevel: LockingLevel.REGION }
+      });
+    }
+    return { success: true };
+  });
+};
+
+export const regionLock = async (data: any, user: any) => {
+  const { zoneId, lock } = data;
+  const { regionId } = user;
+  const level = lock ? LockingLevel.REGION : LockingLevel.NONE;
+
+  await prisma.farmerDemand.updateMany({
+    where: { 
+      farmer: {
+        kebele: { woreda: { zone: { regionId } } },
+        ...(zoneId && { kebele: { woreda: { zoneId } } })
+      } 
+    },
+    data: { lockedAtLevel: level }
+  });
+  return { success: true, level };
+};
+
+/** --- FEDERAL (MOA) MODULE --- **/
+
+export const getFederalDashboard = async (seasonName?: string) => {
+  const activeSeason = await getActiveSeason(seasonName);
+  if (!activeSeason) return null;
+
+  const [unionsCount, destinationsCount, pcsCount, regions] = await Promise.all([
+    prisma.union.count(),
+    prisma.destination.count(),
+    prisma.pC.count(),
+    prisma.region.findMany({
+      include: {
+        regionalFlag: true,
+        zones: {
+          include: {
+            woredas: {
+              include: {
+                kebeles: true
+              }
+            }
+          }
+        },
+        unions: {
+          include: {
+            destinations: {
+              include: {
+                pcs: true
+              }
+            }
+          }
+        }
+      }
+    })
+  ]);
+
+  const demands = await prisma.farmerDemand.findMany({
+    where: { seasonId: activeSeason.id },
+    include: { fertilizerType: true }
+  });
+
+  const totalSummary: Record<string, number> = {};
+  let grandTotal = 0;
+  demands.forEach(d => {
+    const type = d.fertilizerType.name;
+    totalSummary[type] = (totalSummary[type] || 0) + d.originalQuantity;
+    grandTotal += d.originalQuantity;
+  });
+
+  return {
+    productionSeason: activeSeason.name,
+    counts: {
+      totalUnions: unionsCount,
+      totalDestinations: destinationsCount,
+      totalPCs: pcsCount
+    },
+    grandTotal: `${grandTotal} Qt`,
+    fertilizerBreakdown: Object.entries(totalSummary).map(([type, amount]) => ({ type, amount: `${amount} Qt` })),
+    regions: regions.map(r => ({
+      regionId: r.id,
+      regionName: r.name,
+      flagUrl: r.regionalFlag?.imageUrl,
+      unions: r.unions.map(u => ({
+        unionId: u.id,
+        unionName: u.name,
+        destinations: u.destinations.map(d => ({
+          destinationId: d.id,
+          destinationName: d.name,
+          pcs: d.pcs.map(p => ({
+            pcId: p.id,
+            pcName: p.name,
+            kebeleId: p.kebeleId
+          }))
+        }))
+      })),
+      zones: r.zones.map(z => ({
+        zoneId: z.id,
+        zoneName: z.name,
+        woredas: z.woredas.map(w => ({
+          woredaId: w.id,
+          woredaName: w.name,
+          kebeles: w.kebeles.map(k => ({
+            kebeleId: k.id,
+            kebeleName: k.name
+          }))
+        }))
+      }))
+    }))
+  };
+};
+
+export const getMasterData = async () => {
+  const [unions, destinations, pcs, lots] = await Promise.all([
+    prisma.union.findMany({
+      include: {
+        region: true,
+        zone: true
+      }
+    }),
+    prisma.destination.findMany({
+      include: {
+        union: {
+          include: {
+            region: true,
+            zone: true
+          }
+        }
+      }
+    }),
+    prisma.pC.findMany({
+      include: {
+        kebele: {
+          include: {
+            woreda: {
+              include: {
+                zone: {
+                  include: {
+                    region: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        destination: true
+      }
+    }),
+    prisma.shippingLot.findMany({
+      include: {
+        fertilizerType: true
+      }
+    })
+  ]);
+
+  return {
+    unions: unions.map(u => ({
+      id: u.id,
+      name: u.name,
+      hierarchy: {
+        region: u.region.name,
+        zone: u.zone?.name
+      }
+    })),
+    destinations: destinations.map(d => ({
+      id: d.id,
+      name: d.name,
+      hierarchy: {
+        region: d.union.region.name,
+        zone: d.union.zone?.name,
+        union: d.union.name
+      }
+    })),
+    pcs: pcs.map(p => ({
+      id: p.id,
+      name: p.name,
+      hierarchy: {
+        region: p.kebele.woreda.zone.region.name,
+        zone: p.kebele.woreda.zone.name,
+        woreda: p.kebele.woreda.name,
+        kebele: p.kebele.name,
+        destination: p.destination.name
+      }
+    })),
+    lots: lots.map(l => ({
+      lotNumber: l.lotNumber,
+      fertilizerType: l.fertilizerType.name,
+      totalQuantity: l.totalQuantity,
+      ureaAmount: l.ureaAmount,
+      dapAmount: l.dapAmount
+    }))
+  };
+};
+
+export const updateFarmerDemand = async (id: string, data: any) => {
+  return await prisma.farmerDemand.update({
+    where: { id },
+    data
+  });
+};
 

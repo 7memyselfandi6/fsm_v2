@@ -9,12 +9,16 @@ datasource db {
 model Region {
   id           String        @id @default(uuid())
   name         String        @unique
+  code         String?       @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   regionalFlag RegionalFlag?
   unions       Union[]
   users        User[]
   zones        Zone[]
+  warehouses   Warehouse[]
+  subsidies    FertilizerSubsidy[]
+  locks        LockHistory[]
 }
 
 model Zone {
@@ -54,8 +58,20 @@ model Kebele {
   woreda    Woreda   @relation(fields: [woredaId], references: [id])
   pcs       PC[]
   users     User[]
+  sections  Section[]
 
   @@unique([name, woredaId])
+}
+
+model Section {
+  id        String   @id @default(uuid())
+  name      String
+  kebeleId  String
+  kebele    Kebele   @relation(fields: [kebeleId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, kebeleId])
 }
 
 model RegionalFlag {
@@ -101,6 +117,7 @@ model User {
   union             Union?            @relation(fields: [unionId], references: [id])
   woreda            Woreda?           @relation(fields: [woredaId], references: [id])
   zone              Zone?             @relation(fields: [zoneId], references: [id])
+  lockOverrides     LockHistory[]     @relation("LockOverrideBy")
 }
 
 model Union {
@@ -184,6 +201,7 @@ model CropType {
   updatedAt  DateTime       @updatedAt
   category   CropCategory   @relation(fields: [categoryId], references: [id])
   demands    FarmerDemand[]
+  rates      CropFertilizerRate[]
 
   @@unique([name, categoryId])
 }
@@ -197,6 +215,7 @@ model FertilizerType {
   sales        FertilizerSale[]
   inventory    PCInventory[]
   shippingLots ShippingLot[]
+  subsidies    FertilizerSubsidy[]
 }
 
 model FarmerDemand {
@@ -226,6 +245,8 @@ model ShippingLot {
   lotNumber        Int            @unique
   fertilizerTypeId String
   totalQuantity    Float
+  ureaAmount       Float?         @default(0)
+  dapAmount        Float?         @default(0)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   dispatches       LotDispatch[]
@@ -272,6 +293,78 @@ model FertilizerSale {
   fertilizerType   FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
   pc               PC             @relation(fields: [pcId], references: [id])
   storeman         User?          @relation("Storeman", fields: [storemanId], references: [id])
+}
+
+model Warehouse {
+  id            String   @id @default(uuid())
+  center        String
+  destinationId String
+  regionId      String
+  zoneId        String
+  woredaId      String
+  town          String
+  year          Int
+  isOwn         Boolean  @default(true)
+  isRental      Boolean  @default(false)
+  capacity      Float
+  storeman      String
+  sex           String
+  education     String
+  mobile        String
+  hasOffice     Boolean  @default(false)
+  hasComputer   Boolean  @default(false)
+  hasSmartphone Boolean  @default(false)
+  hasWifi       Boolean  @default(false)
+  hasElectric   Boolean  @default(false)
+  networkType   String?  // 3G, 4G, 5G
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  region        Region   @relation(fields: [regionId], references: [id])
+}
+
+model FertilizerSubsidy {
+  id               String         @id @default(uuid())
+  eid              String         @unique
+  year             Int
+  regionId         String
+  fertilizerTypeId String
+  amountMT         Float
+  amountQT         Float
+  priceBefore      Float
+  priceAfter       Float
+  subsidyAmount    Float
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  region           Region         @relation(fields: [regionId], references: [id])
+  fertilizerType   FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
+}
+
+model CropFertilizerRate {
+  id         Int      @id @default(autoincrement())
+  cropId     String
+  highUrea   Float
+  highDap    Float
+  mediumUrea Float
+  mediumDap  Float
+  lowUrea    Float
+  lowDap     Float
+  isLocked   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  crop       CropType @relation(fields: [cropId], references: [id])
+}
+
+model LockHistory {
+  id            String       @id @default(uuid())
+  level         LockingLevel
+  regionId      String?
+  isGlobal      Boolean      @default(false)
+  isLocked      Boolean      @default(true)
+  reason        String?
+  timestamp     DateTime     @default(now())
+  overriddenById String?
+  region        Region?      @relation(fields: [regionId], references: [id])
+  overriddenBy  User?        @relation("LockOverrideBy", fields: [overriddenById], references: [id])
 }
 
 enum Role {

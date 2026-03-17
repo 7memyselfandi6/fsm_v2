@@ -19,6 +19,11 @@ import seasonRoutes from './routes/season.routes.js';
 import systemRoutes from './routes/system.routes.js';
 import woredaRoutes from './routes/woreda.routes.js';
 import zoneRoutes from './routes/zone.routes.js';
+import regionRoutes from './routes/region.routes.js';
+import federalRoutes from './routes/federal.routes.js';
+import warehouseRoutes from './routes/warehouse.routes.js';
+import subsidyRoutes from './routes/subsidy.routes.js';
+import reportRoutes from './routes/report.routes.js';
 
 dotenv.config();
 
@@ -80,6 +85,11 @@ app.use('/api/seasons', seasonRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/woreda', woredaRoutes);
 app.use('/api/zone', zoneRoutes);
+app.use('/api/region', regionRoutes);
+app.use('/api/federal', federalRoutes);
+app.use('/api/warehouses', warehouseRoutes);
+app.use('/api/subsidy', subsidyRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Error Handler
 app.use(errorHandler);
