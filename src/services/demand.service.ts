@@ -24,19 +24,19 @@ const getRegionalFlag = async (regionId?: string | null) => {
   return await prisma.regionalFlag.findUnique({ where: { regionId } });
 };
 
-const getOrCreateFederalFlag = async () => {
-  let flag = await prisma.federalFlag.findFirst();
-  if (!flag) {
-    flag = await prisma.federalFlag.create({
-      data: {
-        name: 'Federal Flag',
-        category: 'FEDERAL',
-        imageUrl: 'https://example.com/federal-flag.png' // Default URL
-      }
-    });
-  }
-  return flag;
-};
+// const getOrCreateFederalFlag = async () => {
+//   let flag = await (prisma as any).federalFlag?.findFirst();
+//   if (!flag) {
+//     flag = await (prisma as any).federalFlag.create({
+//       data: {
+//         name: 'Federal Flag',
+//         category: 'FEDERAL',
+//         imageUrl: 'https://example.com/federal-flag.png' // Default URL
+//       }
+//     });
+//   }
+//   return flag;
+// };
 
 export const getEffectiveQty = (d: any) => 
   d.moaAdjustedQuantity ?? 
@@ -1139,7 +1139,7 @@ export const getFederalDashboard = async (seasonName?: string) => {
   const activeSeason = await getActiveSeason(seasonName);
   if (!activeSeason) return null;
 
-  const [unionsCount, destinationsCount, pcsCount, regions, federalFlag] = await Promise.all([
+  const [unionsCount, destinationsCount, pcsCount, regions] = await Promise.all([
     prisma.union.count(),
     prisma.destination.count(),
     prisma.pC.count(),
@@ -1166,7 +1166,7 @@ export const getFederalDashboard = async (seasonName?: string) => {
         }
       }
     }),
-    getOrCreateFederalFlag()
+    // getOrCreateFederalFlag()
   ]);
 
   const demands = await prisma.farmerDemand.findMany({
@@ -1190,7 +1190,7 @@ export const getFederalDashboard = async (seasonName?: string) => {
 
   return {
     productionSeason: activeSeason.name,
-    federalFlagUrl: federalFlag.imageUrl,
+    // federalFlagUrl: federalFlag.imageUrl,
     counts: {
       totalUnions: unionsCount,
       totalDestinations: destinationsCount,
@@ -1255,7 +1255,7 @@ export const federalAdjust = async (data: any, user: any) => {
    if (!fertilizerTypeId) throw new Error('Fertilizer Type ID is required');
    if (!adjustments || !Array.isArray(adjustments)) throw new Error('Adjustments must be an array');
 
-   await getOrCreateFederalFlag(); // Ensure federal flag exists during federal operation
+  //  await getOrCreateFederalFlag(); // Ensure federal flag exists during federal operation
 
    return await prisma.$transaction(async (tx) => {
      for (const adj of adjustments) {
