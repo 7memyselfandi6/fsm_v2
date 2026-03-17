@@ -34,6 +34,20 @@ export const getSections = async (kebeleId: string) => {
   });
 };
 
+export const getKebeleById = async (id: string) => {
+  return await prisma.kebele.findUnique({
+    where: { id },
+    include: { woreda: { include: { zone: { include: { region: true } } } }, sections: true }
+  });
+};
+
+export const getSectionById = async (id: string) => {
+  return await prisma.section.findUnique({
+    where: { id },
+    include: { kebele: { include: { woreda: { include: { zone: { include: { region: true } } } } } } }
+  });
+};
+
 export const createKebele = async (data: any) => {
   return await prisma.kebele.create({ data });
 };

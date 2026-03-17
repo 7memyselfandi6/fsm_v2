@@ -30,6 +30,134 @@ export const getSeasonByName = async (name: string) => await prisma.season.findU
 export const getCropCategories = async () => await prisma.cropCategory.findMany({ include: { cropTypes: true } });
 export const getFertilizerTypes = async () => await prisma.fertilizerType.findMany();
 
+/** --- KEBELE MODULE --- **/
+
+export const getKebeleSummary = async (user: any, seasonName?: string) => {
+  const { kebeleId, regionId, role } = user;
+  const [kebele, activeSeason, flag] = await Promise.all([
+    prisma.kebele.findUnique({ 
+      where: { id: kebeleId },
+      include: { sections: true }
+    }),
+    getActiveSeason(seasonName),
+    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+  ]);
+
+  if (!activeSeason || !kebele) return null;
+
+  const demands = await prisma.farmerDemand.findMany({
+    where: { 
+      seasonId: activeSeason.id, 
+      farmer: { kebeleId } 
+    },
+    include: { 
+      fertilizerType: true
+    }
+  });
+
+  const summaryMap: Record<string, number> = {};
+  let totalAmount = 0;
+
+  demands.forEach(d => {
+    const type = d.fertilizerType.name;
+    summaryMap[type] = (summaryMap[type] || 0) + d.originalQuantity;
+    totalAmount += d.originalQuantity;
+  });
+
+  return {
+    kebeleId,
+    kebeleName: kebele.name,
+    productionSeason: activeSeason.name,
+    regionalFlagUrl: flag?.imageUrl,
+    totalAmount: `${totalAmount} Qt`,
+    fertilizerBreakdown: Object.entries(summaryMap).map(([type, amount]) => ({ 
+      type, 
+      amount: `${amount} Qt` 
+    }))
+  };
+};
+
+export const getKebeleAdjustmentTable = async (user: any, seasonName?: string) => {
+  const { kebeleId } = user;
+  const activeSeason = await getActiveSeason(seasonName);
+  if (!activeSeason) return null;
+
+  const demands = await prisma.farmerDemand.findMany({
+    where: { seasonId: activeSeason.id, farmer: { kebeleId } },
+    include: { fertilizerType: true, farmer: { select: { farmAreaHectares: true } } }
+  });
+
+  const summaryMap: Record<string, any> = {};
+  demands.forEach(d => {
+    const type = d.fertilizerType.name;
+    const typeId = d.fertilizerTypeId;
+    if (!summaryMap[typeId]) {
+      summaryMap[typeId] = { 
+        fertilizerType: type, 
+        fertilizerTypeId: typeId,
+        collectedQty: 0, 
+        intelligenceQty: 0, 
+        kebeleAdjustedQty: 0 
+      };
+    }
+    const item = summaryMap[typeId];
+    item.collectedQty += d.originalQuantity;
+    item.intelligenceQty += (d.farmer.farmAreaHectares || 0) * (type.toLowerCase().includes('urea') ? 2.5 : 2.0);
+    item.kebeleAdjustedQty += d.kebeleAdjustedQuantity || 0;
+  });
+
+  const lockStatus = await prisma.farmerDemand.findFirst({
+    where: { seasonId: activeSeason.id, farmer: { kebeleId }, lockedAtLevel: { not: LockingLevel.NONE } },
+    select: { lockedAtLevel: true }
+  });
+
+  return {
+    adjustmentTable: Object.values(summaryMap),
+    lockingStatus: {
+      isLocked: !!lockStatus,
+      lockedAt: lockStatus?.lockedAtLevel || 'NONE'
+    }
+  };
+};
+
+export const kebeleAdjust = async (data: any, user: any) => {
+  const { fertilizerTypeId, quantity } = data;
+  const { kebeleId } = user;
+
+  const isLocked = await prisma.farmerDemand.findFirst({
+    where: { 
+      farmer: { kebeleId }, 
+      fertilizerTypeId, 
+      lockedAtLevel: { in: [LockingLevel.KEBELE, LockingLevel.WOREDA, LockingLevel.ZONE, LockingLevel.REGION, LockingLevel.MOA] } 
+    }
+  });
+
+  if (isLocked) throw new Error(`Kebele is locked at ${isLocked.lockedAtLevel} level`);
+
+  await prisma.farmerDemand.updateMany({
+    where: { farmer: { kebeleId }, fertilizerTypeId },
+    data: { 
+      kebeleAdjustedQuantity: quantity, 
+      status: DemandStatus.APPROVED, 
+      lockedAtLevel: LockingLevel.KEBELE 
+    }
+  });
+
+  return { success: true };
+};
+
+export const kebeleLock = async (data: any, user: any) => {
+  const { lock } = data;
+  const { kebeleId } = user;
+  const level = lock ? LockingLevel.KEBELE : LockingLevel.NONE;
+
+  await prisma.farmerDemand.updateMany({
+    where: { farmer: { kebeleId } },
+    data: { lockedAtLevel: level }
+  });
+  return { success: true, level };
+};
+
 /** --- WOREDA MODULE --- **/
 
 export const getWoredaSummary = async (user: any, seasonName?: string) => {

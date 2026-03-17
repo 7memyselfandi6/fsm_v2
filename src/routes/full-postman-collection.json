@@ -1,0 +1,431 @@
+{
+  "info": {
+    "name": "Ethiopian Fertilizer Digital Tracking System - Full API",
+    "description": "Comprehensive Postman collection for the entire FMS Backend, including all hierarchical levels (Federal, Region, Zone, Woreda, Kebele) and operational modules.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Authentication",
+      "item": [
+        {
+          "name": "Login (PhoneNumber)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"0912345678\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Register (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "multipart/form-data" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName", "value": "Abebe Balcha", "type": "text" },
+                { "key": "username", "value": "abebe123", "type": "text" },
+                { "key": "email", "value": "abebe@example.com", "type": "text" },
+                { "key": "phoneNumber", "value": "0911223344", "type": "text" },
+                { "key": "password", "value": "password123", "type": "text" },
+                { "key": "role", "value": "REGION_MANAGER", "type": "text" },
+                { "key": "regionId", "value": "REGION_UUID", "type": "text" },
+                { "key": "profilePicture", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Federal (MoA) Module",
+      "item": [
+        {
+          "name": "Federal Dashboard",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/federal/dashboard?seasonName=Meher", "host": ["{{baseUrl}}"], "path": ["api", "federal", "dashboard"], "query": [{ "key": "seasonName", "value": "Meher" }] }
+          }
+        },
+        {
+          "name": "Master Data (Hierarchy Tree)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/federal/master-data", "host": ["{{baseUrl}}"], "path": ["api", "federal", "master-data"] }
+          }
+        },
+        {
+          "name": "Federal Farmer Requests (All)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/federal/farmer-requests?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "federal", "farmer-requests"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Region Module",
+      "item": [
+        {
+          "name": "Region Summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/region/dashboard-summary", "host": ["{{baseUrl}}"], "path": ["api", "region", "dashboard-summary"] }
+          }
+        },
+        {
+          "name": "Region Detail List",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/region/detail-list?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "region", "detail-list"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Region Adjustment Table",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/region/adjustment-table", "host": ["{{baseUrl}}"], "path": ["api", "region", "adjustment-table"] }
+          }
+        },
+        {
+          "name": "Region Lock/Unlock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneId\": \"ZONE_UUID\",\n  \"lock\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/region/lock", "host": ["{{baseUrl}}"], "path": ["api", "region", "lock"] }
+          }
+        },
+        {
+          "name": "Region Submit Adjustment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fertilizerTypeId\": \"FERT_UUID\",\n  \"adjustments\": [\n    { \"zoneId\": \"ZONE_UUID\", \"quantity\": 500 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/region/adjust", "host": ["{{baseUrl}}"], "path": ["api", "region", "adjust"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Zone Module",
+      "item": [
+        {
+          "name": "Zone Summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/zone/dashboard-summary", "host": ["{{baseUrl}}"], "path": ["api", "zone", "dashboard-summary"] }
+          }
+        },
+        {
+          "name": "Zone Detail List",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/zone/detail-list?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "zone", "detail-list"] }
+          }
+        },
+        {
+          "name": "Zone Adjustment Table",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/zone/adjustment-table", "host": ["{{baseUrl}}"], "path": ["api", "zone", "adjustment-table"] }
+          }
+        },
+        {
+          "name": "Zone Lock/Unlock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"woredaId\": \"WOREDA_UUID\",\n  \"lock\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/zone/lock", "host": ["{{baseUrl}}"], "path": ["api", "zone", "lock"] }
+          }
+        },
+        {
+          "name": "Zone Submit Adjustment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fertilizerTypeId\": \"FERT_UUID\",\n  \"adjustments\": [\n    { \"woredaId\": \"WOREDA_UUID\", \"quantity\": 100 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/zone/adjust", "host": ["{{baseUrl}}"], "path": ["api", "zone", "adjust"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Woreda Module",
+      "item": [
+        {
+          "name": "Woreda Summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/woreda/dashboard-summary", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "dashboard-summary"] }
+          }
+        },
+        {
+          "name": "Woreda Detail List",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/woreda/detail-list?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "detail-list"] }
+          }
+        },
+        {
+          "name": "Woreda Adjustment Table",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/woreda/adjustment-table", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "adjustment-table"] }
+          }
+        },
+        {
+          "name": "Woreda Lock/Unlock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kebeleId\": \"KEBELE_UUID\",\n  \"lock\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/woreda/lock", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "lock"] }
+          }
+        },
+        {
+          "name": "Woreda Submit Adjustment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fertilizerTypeId\": \"FERT_UUID\",\n  \"adjustments\": [\n    { \"kebeleId\": \"KEBELE_UUID\", \"quantity\": 16 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/woreda/adjust", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "adjust"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Warehouse System",
+      "item": [
+        {
+          "name": "Get All Warehouses",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/warehouses?page=1&limit=10&q=Bahr Dar", "host": ["{{baseUrl}}"], "path": ["api", "warehouses"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }, { "key": "q", "value": "Bahr Dar" }] }
+          }
+        },
+        {
+          "name": "Create Warehouse",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"center\": \"Central Hub\",\n  \"destinationId\": \"DEST_UUID\",\n  \"regionId\": \"REGION_UUID\",\n  \"zoneId\": \"ZONE_UUID\",\n  \"woredaId\": \"WOREDA_UUID\",\n  \"town\": \"Addis\",\n  \"year\": 2026,\n  \"capacity\": 5000,\n  \"storeman\": \"Chala\",\n  \"sex\": \"MALE\",\n  \"education\": \"Degree\",\n  \"mobile\": \"0911000000\",\n  \"hasOffice\": true,\n  \"networkType\": \"4G\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/warehouses", "host": ["{{baseUrl}}"], "path": ["api", "warehouses"] }
+          }
+        },
+        {
+          "name": "Delete Warehouse",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/warehouses/UUID", "host": ["{{baseUrl}}"], "path": ["api", "warehouses", "UUID"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Subsidy & Rates",
+      "item": [
+        {
+          "name": "Subsidy Reports",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/subsidy/reports?year=2026", "host": ["{{baseUrl}}"], "path": ["api", "subsidy", "reports"], "query": [{ "key": "year", "value": "2026" }] }
+          }
+        },
+        {
+          "name": "Crop Fertilizer Rates",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/subsidy/crop-rates", "host": ["{{baseUrl}}"], "path": ["api", "subsidy", "crop-rates"] }
+          }
+        },
+        {
+          "name": "Update Rate & Lock",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"highUrea\": 120,\n  \"highDap\": 100,\n  \"isLocked\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/subsidy/crop-rates/1", "host": ["{{baseUrl}}"], "path": ["api", "subsidy", "crop-rates", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Reports",
+      "item": [
+        {
+          "name": "Regional Allocation Report",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/reports/regional-allocation", "host": ["{{baseUrl}}"], "path": ["api", "reports", "regional-allocation"] }
+          }
+        },
+        {
+          "name": "Union Stock Report",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/reports/union-stock", "host": ["{{baseUrl}}"], "path": ["api", "reports", "union-stock"] }
+          }
+        },
+        {
+          "name": "Sold Fertilizer Report",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/reports/sold-fertilizer", "host": ["{{baseUrl}}"], "path": ["api", "reports", "sold-fertilizer"] }
+          }
+        },
+        {
+          "name": "Export to Google Sheets",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportType\": \"TOTAL_SALES\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reports/export/google-sheets", "host": ["{{baseUrl}}"], "path": ["api", "reports", "export", "google-sheets"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Location Management (CRUD)",
+      "item": [
+        {
+          "name": "Get Kebeles by Woreda",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/locations/kebeles/WOREDA_UUID", "host": ["{{baseUrl}}"], "path": ["api", "locations", "kebeles", "WOREDA_UUID"] }
+          }
+        },
+        {
+          "name": "Get Sections by Kebele",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/locations/sections/KEBELE_UUID", "host": ["{{baseUrl}}"], "path": ["api", "locations", "sections", "KEBELE_UUID"] }
+          }
+        },
+        {
+          "name": "Create Kebele (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Kebele\",\n  \"woredaId\": \"WOREDA_UUID\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/locations/kebeles", "host": ["{{baseUrl}}"], "path": ["api", "locations", "kebeles"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Operational Modules",
+      "item": [
+        {
+          "name": "Farmers (Search/Register)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/farmers?q=FARM-2026", "host": ["{{baseUrl}}"], "path": ["api", "farmers"], "query": [{ "key": "q", "value": "FARM-2026" }] }
+          }
+        },
+        {
+          "name": "Crops (Categories & Types)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/crops/categories", "host": ["{{baseUrl}}"], "path": ["api", "crops", "categories"] }
+          }
+        },
+        {
+          "name": "Fertilizer Types",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizers", "host": ["{{baseUrl}}"], "path": ["api", "fertilizers"] }
+          }
+        },
+        {
+          "name": "Supply: Sales Initiate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmerId\": \"UUID\",\n  \"pcId\": \"UUID\",\n  \"fertilizerTypeId\": \"UUID\",\n  \"quantity\": 2,\n  \"paymentMethod\": \"TELEBIRR\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/supply/sales/initiate", "host": ["{{baseUrl}}"], "path": ["api", "supply", "sales", "initiate"] }
+          }
+        },
+        {
+          "name": "System: Init Demand Form",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/system/init-demand-form", "host": ["{{baseUrl}}"], "path": ["api", "system", "init-demand-form"] }
+          }
+        },
+        {
+          "name": "Users: Get All (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+          }
+        },
+        {
+          "name": "Seasons: Get All",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/seasons", "host": ["{{baseUrl}}"], "path": ["api", "seasons"] }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ]
+}
