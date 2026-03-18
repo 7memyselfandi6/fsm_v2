@@ -2,12 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. MANUALLY find and parse the .env file to be 100% sure
+// 1. MANUALLY find and parse the .env file
 const envPath = path.resolve(__dirname, '../.env');
 let dbUrl = process.env.DATABASE_URL;
 
@@ -18,15 +20,13 @@ if (!dbUrl && fs.existsSync(envPath)) {
 }
 
 if (!dbUrl) {
-  // Fallback to the URL we've been using if the file read fails
   dbUrl = "postgresql://neondb_owner:npg_hCkF8itsWl4w@ep-snowy-water-ancuacgt-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require";
 }
 
-// 2. Instantiate with the only property Prisma 7 recognizes for manual URLs
-const prisma = new PrismaClient({
-  // Use 'as any' because Prisma's TS definitions for v7 can be finicky
-  datasourceUrl: dbUrl
-} as any);
+// 2. Instantiate with adapter
+const pool = new pg.Pool({ connectionString: dbUrl });
+const adapter = new PrismaPg(pool as any);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🚀 Executing 'God Mode' Super Admin creation...");
