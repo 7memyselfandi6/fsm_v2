@@ -21,19 +21,6 @@ export const loginUser = async (phoneNumber: string, password: string) => {
   if (user && (await bcrypt.compare(password, user.password))) {
     const { password: _, ...userWithoutPassword } = user;
     
-    // Construct geographic context based on role
-    const geoContext: any = {
-      role: user.role,
-      profilePictureUrl: user.profilePictureUrl,
-    };
-
-    if (user.kebeleId) geoContext.kebeleId = user.kebeleId;
-    if (user.woredaId) geoContext.woredaId = user.woredaId;
-    if (user.zoneId) geoContext.zoneId = user.zoneId;
-    if (user.regionId) geoContext.regionId = user.regionId;
-    if (user.pcId) geoContext.pcId = user.pcId;
-    if (user.unionId) geoContext.unionId = user.unionId;
-
     return {
       ...userWithoutPassword,
       token: generateToken(user.id),
