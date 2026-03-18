@@ -7,77 +7,83 @@ datasource db {
 }
 
 model Federal {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  status    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isLocked  Boolean  @default(false)
+  id                    String   @id @default(uuid())
+  name                  String   @unique
+  status                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  isLocked              Boolean  @default(false)
+  totalAdjustedQuantity Float    @default(0)
+  isGlobalLockActive    Boolean  @default(false)
 }
 
 model Region {
-  id           String              @id @default(uuid())
-  name         String              @unique
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  code         String?             @unique
-  status       Boolean             @default(true)
-  isLocked     Boolean             @default(false)
-  subsidies    FertilizerSubsidy[]
-  locks        LockHistory[]
-  regionalFlag RegionalFlag?
-  unions       Union[]
-  users        User[]
-  warehouses   Warehouse[]
-  zones        Zone[]
+  id                    String              @id @default(uuid())
+  name                  String              @unique
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  code                  String?             @unique
+  status                Boolean             @default(true)
+  isLocked              Boolean             @default(false)
+  totalAdjustedQuantity Float               @default(0)
+  subsidies             FertilizerSubsidy[]
+  locks                 LockHistory[]
+  regionalFlag          RegionalFlag?
+  unions                Union[]
+  users                 User[]
+  warehouses            Warehouse[]
+  zones                 Zone[]
 }
 
 model Zone {
-  id        String   @id @default(uuid())
-  name      String
-  regionId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  status    Boolean  @default(true)
-  isLocked  Boolean  @default(false)
-  unions    Union[]
-  users     User[]
-  woredas   Woreda[]
-  region    Region   @relation(fields: [regionId], references: [id])
+  id                    String   @id @default(uuid())
+  name                  String
+  regionId              String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  status                Boolean  @default(true)
+  isLocked              Boolean  @default(false)
+  totalAdjustedQuantity Float    @default(0)
+  unions                Union[]
+  users                 User[]
+  woredas               Woreda[]
+  region                Region   @relation(fields: [regionId], references: [id])
 
   @@unique([name, regionId])
   @@index([regionId])
 }
 
 model Woreda {
-  id        String   @id @default(uuid())
-  name      String
-  zoneId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  status    Boolean  @default(true)
-  isLocked  Boolean  @default(false)
-  kebeles   Kebele[]
-  users     User[]
-  zone      Zone     @relation(fields: [zoneId], references: [id])
+  id                    String   @id @default(uuid())
+  name                  String
+  zoneId                String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  status                Boolean  @default(true)
+  isLocked              Boolean  @default(false)
+  totalAdjustedQuantity Float    @default(0)
+  kebeles               Kebele[]
+  users                 User[]
+  zone                  Zone     @relation(fields: [zoneId], references: [id])
 
   @@unique([name, zoneId])
   @@index([zoneId])
 }
 
 model Kebele {
-  id        String    @id @default(uuid())
-  name      String
-  woredaId  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  status    Boolean   @default(true)
-  isLocked  Boolean   @default(false)
-  farmers   Farmer[]
-  woreda    Woreda    @relation(fields: [woredaId], references: [id])
-  pcs       PC[]
-  sections  Section[]
-  users     User[]
+  id                    String    @id @default(uuid())
+  name                  String
+  woredaId              String
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  status                Boolean   @default(true)
+  isLocked              Boolean   @default(false)
+  totalAdjustedQuantity Float     @default(0)
+  farmers               Farmer[]
+  woreda                Woreda    @relation(fields: [woredaId], references: [id])
+  pcs                   PC[]
+  sections              Section[]
+  users                 User[]
 
   @@unique([name, woredaId])
   @@index([woredaId])
@@ -115,6 +121,20 @@ model FederalFlag {
   updatedAt DateTime @updatedAt
 }
 
+model AdjustmentHistory {
+  id              String       @id @default(uuid())
+  level           LockingLevel
+  entityId        String
+  entityType      String
+  previousAmount  Float
+  newAmount       Float
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  timestamp       DateTime     @default(now())
+  reason          String?
+  distributions   Json?        // Stores the distribution breakdown to children
+}
+
 model User {
   id                String            @id @default(uuid())
   fullName          String
@@ -148,6 +168,7 @@ model User {
   union             Union?            @relation(fields: [unionId], references: [id])
   woreda            Woreda?           @relation(fields: [woredaId], references: [id])
   zone              Zone?             @relation(fields: [zoneId], references: [id])
+  adjustments       AdjustmentHistory[]
 }
 
 model Union {
