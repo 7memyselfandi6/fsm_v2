@@ -12,11 +12,21 @@ import {
   updateKebele,
   deleteKebele
 } from '../controllers/kebele.controller.js';
+import {
+  lockKebele,
+  bulkLockKebele,
+  getKebeleLockStatus
+} from '../controllers/lock.controller.js';
 import { auditLog } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
 router.use(protect);
+
+// Administrative Locking (Division Level)
+router.post('/division-lock', authorizeRole(['KEBELE_MANAGER', 'WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']), auditLog('KEBELE_DIVISION_LOCK'), lockKebele);
+router.post('/bulk-lock', authorizeRole(['WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']), auditLog('KEBELE_BULK_LOCK'), bulkLockKebele);
+router.get('/lock-status', auditLog('FETCH_KEBELE_LOCK_STATUS'), getKebeleLockStatus);
 
 // Dashboard & Adjustments (Scoped to Kebele DA/Manager)
 router.get('/dashboard-summary', auditLog('FETCH_KEBELE_SUMMARY'), getKebeleSummary);

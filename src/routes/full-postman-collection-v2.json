@@ -89,6 +89,37 @@
             },
             "url": { "raw": "{{baseUrl}}/api/federal/adjust", "host": ["{{baseUrl}}"], "path": ["api", "federal", "adjust"] }
           }
+        },
+        {
+          "name": "Federal Individual Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"FED_UUID\",\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/federal/lock", "host": ["{{baseUrl}}"], "path": ["api", "federal", "lock"] }
+          }
+        },
+        {
+          "name": "Federal Bulk Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/federal/bulk-lock", "host": ["{{baseUrl}}"], "path": ["api", "federal", "bulk-lock"] }
+          }
+        },
+        {
+          "name": "Federal Lock Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/federal/lock-status", "host": ["{{baseUrl}}"], "path": ["api", "federal", "lock-status"] }
+          }
         }
       ]
     },
@@ -139,6 +170,37 @@
             },
             "url": { "raw": "{{baseUrl}}/api/region/adjust", "host": ["{{baseUrl}}"], "path": ["api", "region", "adjust"] }
           }
+        },
+        {
+          "name": "Region Division Individual Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"REGION_UUID\",\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/region/division-lock", "host": ["{{baseUrl}}"], "path": ["api", "region", "division-lock"] }
+          }
+        },
+        {
+          "name": "Region Bulk Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/region/bulk-lock", "host": ["{{baseUrl}}"], "path": ["api", "region", "bulk-lock"] }
+          }
+        },
+        {
+          "name": "Region Lock Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/region/lock-status", "host": ["{{baseUrl}}"], "path": ["api", "region", "lock-status"] }
+          }
         }
       ]
     },
@@ -188,6 +250,37 @@
               "raw": "{\n  \"fertilizerTypeId\": \"FERT_UUID\",\n  \"adjustments\": [\n    { \"woredaId\": \"WOREDA_UUID\", \"quantity\": 100 }\n  ]\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/zone/adjust", "host": ["{{baseUrl}}"], "path": ["api", "zone", "adjust"] }
+          }
+        },
+        {
+          "name": "Zone Division Individual Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"ZONE_UUID\",\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/zone/division-lock", "host": ["{{baseUrl}}"], "path": ["api", "zone", "division-lock"] }
+          }
+        },
+        {
+          "name": "Zone Bulk Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/zone/bulk-lock", "host": ["{{baseUrl}}"], "path": ["api", "zone", "bulk-lock"] }
+          }
+        },
+        {
+          "name": "Zone Lock Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/zone/lock-status", "host": ["{{baseUrl}}"], "path": ["api", "zone", "lock-status"] }
           }
         }
       ]
@@ -256,6 +349,37 @@
             },
             "url": { "raw": "{{baseUrl}}/api/woreda/adjust", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "adjust"] }
           }
+        },
+        {
+          "name": "Woreda Division Individual Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"WOREDA_UUID\",\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/woreda/division-lock", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "division-lock"] }
+          }
+        },
+        {
+          "name": "Woreda Bulk Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/woreda/bulk-lock", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "bulk-lock"] }
+          }
+        },
+        {
+          "name": "Woreda Lock Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/woreda/lock-status", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "lock-status"] }
+          }
         }
       ]
     },
@@ -305,6 +429,37 @@
               "raw": "{\n  \"fertilizerTypeId\": \"FERT_UUID\",\n  \"quantity\": 10\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/kebele/adjust", "host": ["{{baseUrl}}"], "path": ["api", "kebele", "adjust"] }
+          }
+        },
+        {
+          "name": "Kebele Division Individual Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"KEBELE_UUID\",\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/kebele/division-lock", "host": ["{{baseUrl}}"], "path": ["api", "kebele", "division-lock"] }
+          }
+        },
+        {
+          "name": "Kebele Bulk Lock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lockStatus\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/kebele/bulk-lock", "host": ["{{baseUrl}}"], "path": ["api", "kebele", "bulk-lock"] }
+          }
+        },
+        {
+          "name": "Kebele Lock Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/kebele/lock-status", "host": ["{{baseUrl}}"], "path": ["api", "kebele", "lock-status"] }
           }
         },
         {

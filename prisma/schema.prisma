@@ -10,6 +10,7 @@ model Federal {
   id        String   @id @default(uuid())
   name      String   @unique
   status    Boolean  @default(true)
+  isLocked  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -19,6 +20,7 @@ model Region {
   name         String        @unique
   code         String?       @unique
   status       Boolean       @default(true)
+  isLocked     Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   regionalFlag RegionalFlag?
@@ -35,6 +37,7 @@ model Zone {
   name      String
   regionId  String
   status    Boolean  @default(true)
+  isLocked  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   unions    Union[]
@@ -51,6 +54,7 @@ model Woreda {
   name      String
   zoneId    String
   status    Boolean  @default(true)
+  isLocked  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   kebeles   Kebele[]
@@ -66,6 +70,7 @@ model Kebele {
   name      String
   woredaId  String
   status    Boolean  @default(true)
+  isLocked  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   farmers   Farmer[]
@@ -396,6 +401,8 @@ model CropFertilizerRate {
 model LockHistory {
   id            String       @id @default(uuid())
   level         LockingLevel
+  entityId      String?      // ID of the locked entity (Kebele, Woreda, etc.)
+  entityType    String?      // Type of entity (KEBELE, WOREDA, ZONE, REGION, FEDERAL)
   regionId      String?
   isGlobal      Boolean      @default(false)
   isLocked      Boolean      @default(true)

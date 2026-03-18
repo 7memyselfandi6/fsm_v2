@@ -7,12 +7,22 @@ import {
   woredaLock,
   woredaAdjust
 } from '../controllers/woreda.controller.js';
+import {
+  lockWoreda,
+  bulkLockWoreda,
+  getWoredaLockStatus
+} from '../controllers/lock.controller.js';
 import { auditLog } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
 router.use(protect);
 router.use(authorizeRole(['WOREDA_MANAGER', 'ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']));
+
+// Administrative Locking (Division Level)
+router.post('/division-lock', auditLog('WOREDA_DIVISION_LOCK'), lockWoreda);
+router.post('/bulk-lock', authorizeRole(['ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']), auditLog('WOREDA_BULK_LOCK'), bulkLockWoreda);
+router.get('/lock-status', auditLog('FETCH_WOREDA_LOCK_STATUS'), getWoredaLockStatus);
 
 router.get('/dashboard-summary', auditLog('FETCH_WOREDA_SUMMARY'), getWoredaSummary);
 router.get('/detail-list', auditLog('FETCH_WOREDA_DETAIL_LIST'), getWoredaDetailList);
