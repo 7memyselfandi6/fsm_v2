@@ -214,7 +214,24 @@
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/api/woreda/adjustment-table", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "adjustment-table"] }
-          }
+          },
+          "response": [
+            {
+              "name": "Successful Response (with Kebele Details)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/woreda/adjustment-table", "host": ["{{baseUrl}}"], "path": ["api", "woreda", "adjustment-table"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"adjustmentTable\": [\n    {\n      \"fertilizerType\": \"Urea\",\n      \"fertilizerTypeId\": \"urea-uuid\",\n      \"collectedQty\": 150,\n      \"intelligenceQty\": 7.5,\n      \"kebeleAdjustedQty\": 130,\n      \"woredaAdjustedQty\": 110,\n      \"kebeles\": [\n        {\n          \"kebeleId\": \"kebele-1-uuid\",\n          \"kebeleName\": \"Kebele 01\",\n          \"collectedQty\": 100,\n          \"kebeleAdjustedQty\": 90,\n          \"woredaAdjustedQty\": 80\n        },\n        {\n          \"kebeleId\": \"kebele-2-uuid\",\n          \"kebeleName\": \"Kebele 02\",\n          \"collectedQty\": 50,\n          \"kebeleAdjustedQty\": 40,\n          \"woredaAdjustedQty\": 30\n        }\n      ]\n    }\n  ],\n  \"lockingStatus\": {\n    \"isLocked\": false,\n    \"lockedAt\": \"NONE\"\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Woreda Lock/Unlock",

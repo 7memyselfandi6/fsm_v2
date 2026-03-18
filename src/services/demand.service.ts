@@ -290,13 +290,23 @@ export const getWoredaAdjustmentTable = async (user: any, seasonName?: string) =
 
   const demands = await prisma.farmerDemand.findMany({
     where: { seasonId: activeSeason.id, farmer: { kebele: { woredaId } } },
-    include: { fertilizerType: true, farmer: { select: { farmAreaHectares: true } } }
+    include: { 
+      fertilizerType: true, 
+      farmer: { 
+        include: { 
+          kebele: true 
+        } 
+      } 
+    }
   });
 
   const summaryMap: Record<string, any> = {};
+  
   demands.forEach(d => {
     const type = d.fertilizerType.name;
     const typeId = d.fertilizerTypeId;
+    const k = d.farmer.kebele;
+
     if (!summaryMap[typeId]) {
       summaryMap[typeId] = { 
         fertilizerType: type, 
@@ -304,15 +314,39 @@ export const getWoredaAdjustmentTable = async (user: any, seasonName?: string) =
         collectedQty: 0, 
         intelligenceQty: 0, 
         kebeleAdjustedQty: 0, 
-        woredaAdjustedQty: 0 
+        woredaAdjustedQty: 0,
+        kebeles: {} // Nested kebele breakdown
       };
     }
+    
     const item = summaryMap[typeId];
     item.collectedQty += d.originalQuantity;
     item.intelligenceQty += (d.farmer.farmAreaHectares || 0) * (type.toLowerCase().includes('urea') ? 2.5 : 2.0);
     item.kebeleAdjustedQty += d.kebeleAdjustedQuantity || 0;
     item.woredaAdjustedQty += d.woredaAdjustedQuantity || 0;
+
+    if (k) {
+      if (!item.kebeles[k.id]) {
+        item.kebeles[k.id] = {
+          kebeleId: k.id,
+          kebeleName: k.name,
+          collectedQty: 0,
+          kebeleAdjustedQty: 0,
+          woredaAdjustedQty: 0
+        };
+      }
+      const kItem = item.kebeles[k.id];
+      kItem.collectedQty += d.originalQuantity;
+      kItem.kebeleAdjustedQty += d.kebeleAdjustedQuantity || 0;
+      kItem.woredaAdjustedQty += d.woredaAdjustedQuantity || 0;
+    }
   });
+
+  // Convert nested kebeles from object to array
+  const adjustmentTable = Object.values(summaryMap).map((item: any) => ({
+    ...item,
+    kebeles: Object.values(item.kebeles)
+  }));
 
   const lockStatus = await prisma.farmerDemand.findFirst({
     where: { seasonId: activeSeason.id, farmer: { kebele: { woredaId } }, lockedAtLevel: { not: LockingLevel.NONE } },
@@ -320,7 +354,7 @@ export const getWoredaAdjustmentTable = async (user: any, seasonName?: string) =
   });
 
   return {
-    adjustmentTable: Object.values(summaryMap),
+    adjustmentTable,
     lockingStatus: {
       isLocked: !!lockStatus,
       lockedAt: lockStatus?.lockedAtLevel || 'NONE'
