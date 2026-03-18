@@ -6,10 +6,19 @@ datasource db {
   provider = "postgresql"
 }
 
+model Federal {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Region {
   id           String        @id @default(uuid())
   name         String        @unique
   code         String?       @unique
+  status       Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   regionalFlag RegionalFlag?
@@ -25,6 +34,7 @@ model Zone {
   id        String   @id @default(uuid())
   name      String
   regionId  String
+  status    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   unions    Union[]
@@ -40,6 +50,7 @@ model Woreda {
   id        String   @id @default(uuid())
   name      String
   zoneId    String
+  status    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   kebeles   Kebele[]
@@ -54,6 +65,7 @@ model Kebele {
   id        String   @id @default(uuid())
   name      String
   woredaId  String
+  status    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   farmers   Farmer[]

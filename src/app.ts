@@ -26,6 +26,7 @@ import federalRoutes from './routes/federal.routes.js';
 import warehouseRoutes from './routes/warehouse.routes.js';
 import subsidyRoutes from './routes/subsidy.routes.js';
 import reportRoutes from './routes/report.routes.js';
+import financialRoutes from './routes/financial.routes.js';
 
 dotenv.config();
 
@@ -94,6 +95,7 @@ app.use('/api/federal', federalRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/subsidy', subsidyRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/list', financialRoutes);
 
 // Error Handler
 app.use(errorHandler);

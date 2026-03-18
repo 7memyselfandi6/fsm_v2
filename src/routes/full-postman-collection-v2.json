@@ -427,6 +427,46 @@
           }
         }
       ]
+    },
+    {
+      "name": "11. Financials",
+      "item": [
+        {
+          "name": "Get Kebele Financials",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/list/kebele?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "list", "kebele"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Get Woreda Financials",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/list/woreda?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "list", "woreda"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Get Zone Financials",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/list/zone?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "list", "zone"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Get Region Financials",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/list/region?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "list", "region"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Get Federal Financials",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/list/federal?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["api", "list", "federal"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        }
+      ]
     }
   ],
   "variable": [
