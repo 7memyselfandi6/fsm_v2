@@ -8,10 +8,7 @@ import * as locationService from '../services/location.service.js';
 export const getKebeleSummary = asyncHandler(async (req: Request, res: Response) => {
   const { seasonName } = req.query;
   const result = await demandService.getKebeleSummary(req.user, seasonName as string);
-  if (!result) {
-    res.status(404);
-    throw new Error('No active season found');
-  }
+
   res.json(result);
 });
 

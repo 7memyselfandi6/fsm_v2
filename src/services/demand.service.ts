@@ -1,5 +1,5 @@
 import prisma from '../config/prisma.js';
-import type { DemandsResponse, DemandSummary, Kebele, FertilizerBreakdown, Pagination } from '../types/demand.js';
+import type { DemandsResponse, DemandSummary, Kebele, FertilizerBreakdown, Pagination, DashboardSummaryOutput } from '../types/demand.js';
 import { Prisma, DemandStatus, LockingLevel, Role } from '@prisma/client';
 
 /** --- SHARED HELPERS --- **/
@@ -41,7 +41,7 @@ export const getFertilizerTypes = async () => await prisma.fertilizerType.findMa
 
 /** --- KEBELE MODULE --- **/
 
-export const getKebeleSummary = async (user: any, seasonName?: string) => {
+export const getKebeleSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { kebeleId, regionId, role } = user;
   const [kebele, activeSeason, flag] = await Promise.all([
     prisma.kebele.findUnique({ 
@@ -52,7 +52,12 @@ export const getKebeleSummary = async (user: any, seasonName?: string) => {
     role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
-  if (!activeSeason || !kebele) return null;
+  if (!activeSeason) {
+    throw new Error('Active season not found.');
+  }
+  if (!kebele) {
+    throw new Error(`Kebele with ID ${kebeleId} not found.`);
+  }
 
   const demands = await prisma.farmerDemand.findMany({
     where: { 
@@ -60,41 +65,37 @@ export const getKebeleSummary = async (user: any, seasonName?: string) => {
       farmer: { kebeleId } 
     },
     include: { 
-      fertilizerType: true
+      fertilizerType: { select: { id: true, name: true } }
     }
   });
 
-  const summaryMap: Record<string, { original: number, adjusted: number }> = {};
+  const summaryMap: Record<string, { original: number, adjusted: number, fertilizerTypeId: string }> = {};
   let totalAmount = 0;
   let totalAdjustedAmount = 0;
 
   demands.forEach(d => {
     const type = d.fertilizerType.name;
+    const fertilizerTypeId = d.fertilizerType.id;
     const effective = getEffectiveQty(d);
-    if (!summaryMap[type]) summaryMap[type] = { original: 0, adjusted: 0 };
+    if (!summaryMap[type]) summaryMap[type] = { original: 0, adjusted: 0, fertilizerTypeId };
     summaryMap[type].original += d.originalQuantity;
     summaryMap[type].adjusted += effective;
     totalAmount += d.originalQuantity;
     totalAdjustedAmount += effective;
   });
 
-  const fertilizerTotals: Record<string, number> = {};
-  Object.entries(summaryMap).forEach(([type, counts]) => {
-    fertilizerTotals[type] = counts.adjusted;
-  });
-
   return {
-    kebele_of_origin_id: kebeleId,
-    kebele_of_origin: kebele.name,
+    woredaId: kebeleId,
+    woredaName: kebele.name,
     productionSeason: activeSeason.name,
     totalAmount: totalAmount,
     totalAdjustedAmount: totalAdjustedAmount,
     fertilizerBreakdown: Object.entries(summaryMap).map(([type, counts]) => ({ 
       type, 
       originalAmount: counts.original,
-      adjustedAmount: counts.adjusted
+      adjustedAmount: counts.adjusted,
+      fertilizerTypeId: counts.fertilizerTypeId
     })),
-    fertilizer_totals: fertilizerTotals,
   };
 };
 
@@ -181,7 +182,7 @@ export const kebeleLock = async (data: any, user: any) => {
 
 /** --- WOREDA MODULE --- **/
 
-export const getWoredaSummary = async (user: any, seasonName?: string) => {
+export const getWoredaSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { woredaId, regionId, role } = user;
   const [woreda, activeSeason, flag] = await Promise.all([
     prisma.woreda.findUnique({ 
@@ -195,7 +196,12 @@ export const getWoredaSummary = async (user: any, seasonName?: string) => {
     role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
-  if (!activeSeason || !woreda) return null;
+  if (!activeSeason) {
+    throw new Error('Active season not found.');
+  }
+  if (!woreda) {
+    throw new Error(`Woreda with ID ${woredaId} not found.`);
+  }
 
   const demands = await prisma.farmerDemand.findMany({
     where: { 
@@ -203,93 +209,41 @@ export const getWoredaSummary = async (user: any, seasonName?: string) => {
       farmer: { kebele: { woredaId } } 
     },
     include: { 
-      fertilizerType: true,
+      fertilizerType: { select: { id: true, name: true } },
       farmer: { select: { kebeleId: true } }
     }
   });
 
   // Calculate Woreda Summary
-  const woredaSummaryMap: Record<string, { original: number, adjusted: number }> = {};
+  const woredaSummaryMap: Record<string, { original: number, adjusted: number, fertilizerTypeId: string }> = {};
   let woredaTotalAmount = 0;
   let woredaTotalAdjustedAmount = 0;
 
-  // Group by Kebele
-  const kebeleSummaries: Record<string, { name: string, totalAmount: number, totalAdjustedAmount: number, fertilizerBreakdown: any[] }> = {};
-  
-  // Initialize Kebele Summaries
-  woreda.kebeles.forEach(k => {
-    kebeleSummaries[k.id] = { name: k.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [] };
-  });
-
-  const kebeleFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
-
   demands.forEach(d => {
     const type = d.fertilizerType.name;
-    const kid = d.farmer.kebeleId;
+    const fertilizerTypeId = d.fertilizerType.id;
     const effective = getEffectiveQty(d);
 
     // Woreda aggregation
-    if (!woredaSummaryMap[type]) woredaSummaryMap[type] = { original: 0, adjusted: 0 };
+    if (!woredaSummaryMap[type]) woredaSummaryMap[type] = { original: 0, adjusted: 0, fertilizerTypeId };
     woredaSummaryMap[type].original += d.originalQuantity;
     woredaSummaryMap[type].adjusted += effective;
     woredaTotalAmount += d.originalQuantity;
     woredaTotalAdjustedAmount += effective;
-
-    // Kebele aggregation
-    if (kebeleSummaries[kid]) {
-      kebeleSummaries[kid].totalAmount += d.originalQuantity;
-      kebeleSummaries[kid].totalAdjustedAmount += effective;
-      if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
-      if (!kebeleFertilizerMaps[kid][type]) kebeleFertilizerMaps[kid][type] = { original: 0, adjusted: 0 };
-      kebeleFertilizerMaps[kid][type].original += d.originalQuantity;
-      kebeleFertilizerMaps[kid][type].adjusted += effective;
-    }
-  });
-
-  // Convert Kebele maps to breakdowns
-  const kebelesSummaryResult = Object.keys(kebeleSummaries).map(kid => {
-    const kebele = woreda.kebeles.find(k => k.id === kid);
-    const fertMap = kebeleFertilizerMaps[kid] || {};
-    const kebeleFertilizerTotals: Record<string, number> = {};
-    Object.entries(fertMap).forEach(([type, counts]) => {
-      kebeleFertilizerTotals[type] = counts.adjusted;
-    });
-    return {
-      kebele_of_origin_id: kid,
-      kebele_of_origin: kebeleSummaries[kid].name,
-      totalAmount: kebeleSummaries[kid].totalAmount,
-      totalAdjustedAmount: kebeleSummaries[kid].totalAdjustedAmount,
-      fertilizerBreakdown: Object.entries(fertMap).map(([type, counts]) => ({
-        type,
-        originalAmount: counts.original,
-        adjustedAmount: counts.adjusted
-      })),
-      fertilizer_totals: kebeleFertilizerTotals
-    };
-  });
-
-  const woredaFertilizerTotals: Record<string, number> = {};
-  Object.entries(woredaSummaryMap).forEach(([type, counts]) => {
-    woredaFertilizerTotals[type] = counts.adjusted;
   });
 
   return {
-    woreda_of_origin_id: woreda.id,
-    woreda_of_origin: woreda.name,
-    region_of_origin_id: woreda.zone.region.id,
-    region_of_origin: woreda.zone.region.name,
-    zone_of_origin_id: woreda.zone.id,
-    zone_of_origin: woreda.zone.name,
+    woredaId: woreda.id,
+    woredaName: woreda.name,
     productionSeason: activeSeason.name,
     totalAmount: woredaTotalAmount,
     totalAdjustedAmount: woredaTotalAdjustedAmount,
-    fertilizerBreakdown: Object.entries(woredaSummaryMap).map(([type, counts]) => ({ 
-      type, 
+    fertilizerBreakdown: Object.entries(woredaSummaryMap).map(([type, counts]) => ({
+      type,
       originalAmount: counts.original,
-      adjustedAmount: counts.adjusted
+      adjustedAmount: counts.adjusted,
+      fertilizerTypeId: counts.fertilizerTypeId
     })),
-    fertilizer_totals: woredaFertilizerTotals,
-    kebeles: kebelesSummaryResult
   };
 };
 
@@ -415,7 +369,7 @@ export const woredaLock = async (data: any, user: any) => {
 
 /** --- ZONE MODULE --- **/
 
-export const getZoneSummary = async (user: any, seasonName?: string) => {
+export const getZoneSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { zoneId, regionId, role } = user;
   const [zone, activeSeason, flag] = await Promise.all([
     prisma.zone.findUnique({ 
@@ -433,7 +387,12 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
     role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
-  if (!activeSeason || !zone) return null;
+  if (!activeSeason) {
+    throw new Error('Active season not found.');
+  }
+  if (!zone) {
+    throw new Error(`Zone with ID ${zoneId} not found.`);
+  }
 
   const demands = await prisma.farmerDemand.findMany({
     where: { 
@@ -441,7 +400,7 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
       farmer: { kebele: { woreda: { zoneId } } } 
     },
     include: { 
-      fertilizerType: true,
+      fertilizerType: { select: { id: true, name: true } },
       farmer: {
         include: {
           kebele: {
@@ -457,138 +416,39 @@ export const getZoneSummary = async (user: any, seasonName?: string) => {
   });
 
   // Aggregators
-  const zoneSummaryMap: Record<string, { original: number, adjusted: number }> = {};
+  const zoneSummaryMap: Record<string, { original: number, adjusted: number, fertilizerTypeId: string }> = {};
   let zoneTotalAmount = 0;
   let zoneTotalAdjustedAmount = 0;
 
-  // Hierarchical Structure: Woreda -> Kebele -> Fertilizer Summary
-  const woredaData: Record<string, { 
-    name: string, 
-    totalAmount: number, 
-    totalAdjustedAmount: number,
-    fertilizerBreakdown: any[], 
-    kebeles: Record<string, { name: string, totalAmount: number, totalAdjustedAmount: number, fertilizerBreakdown: any[] }> 
-  }> = {};
-
-  // Initialize Structure
-  zone.woredas.forEach(w => {
-    woredaData[w.id] = { name: w.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [], kebeles: {} };
-    w.kebeles.forEach(k => {
-      woredaData[w.id].kebeles[k.id] = { name: k.name, totalAmount: 0, totalAdjustedAmount: 0, fertilizerBreakdown: [] };
-    });
-  });
-
-  const woredaFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
-  const kebeleFertilizerMaps: Record<string, Record<string, { original: number, adjusted: number }>> = {};
-
   demands.forEach(d => {
     const type = d.fertilizerType.name;
-    const kid = d.farmer.kebeleId;
-    const wid = d.farmer.kebele.woredaId;
+    const fertilizerTypeId = d.fertilizerType.id;
     const effective = getEffectiveQty(d);
 
     // Zone aggregation
-    if (!zoneSummaryMap[type]) zoneSummaryMap[type] = { original: 0, adjusted: 0 };
+    if (!zoneSummaryMap[type]) zoneSummaryMap[type] = { original: 0, adjusted: 0, fertilizerTypeId };
     zoneSummaryMap[type].original += d.originalQuantity;
     zoneSummaryMap[type].adjusted += effective;
     zoneTotalAmount += d.originalQuantity;
     zoneTotalAdjustedAmount += effective;
-
-    // Woreda aggregation
-    if (woredaData[wid]) {
-      woredaData[wid].totalAmount += d.originalQuantity;
-      woredaData[wid].totalAdjustedAmount += effective;
-      if (!woredaFertilizerMaps[wid]) woredaFertilizerMaps[wid] = {};
-      if (!woredaFertilizerMaps[wid][type]) woredaFertilizerMaps[wid][type] = { original: 0, adjusted: 0 };
-      woredaFertilizerMaps[wid][type].original += d.originalQuantity;
-      woredaFertilizerMaps[wid][type].adjusted += effective;
-
-      // Kebele aggregation
-      if (woredaData[wid].kebeles[kid]) {
-        woredaData[wid].kebeles[kid].totalAmount += d.originalQuantity;
-        woredaData[wid].kebeles[kid].totalAdjustedAmount += effective;
-        if (!kebeleFertilizerMaps[kid]) kebeleFertilizerMaps[kid] = {};
-        if (!kebeleFertilizerMaps[kid][type]) kebeleFertilizerMaps[kid][type] = { original: 0, adjusted: 0 };
-        kebeleFertilizerMaps[kid][type].original += d.originalQuantity;
-        kebeleFertilizerMaps[kid][type].adjusted += effective;
-      }
-    }
-  });
-
-  // Final Transformation
-  const woredas = Object.entries(woredaData).map(([wid, w]) => {
-    const woredaFertMap = woredaFertilizerMaps[wid] || {};
-    const woredaFertilizerTotals: Record<string, number> = {};
-    Object.entries(woredaFertMap).forEach(([type, counts]) => {
-      woredaFertilizerTotals[type] = counts.adjusted;
-    });
-
-    const currentWoreda = zone.woredas.find(wo => wo.id === wid);
-
-    return {
-      woreda_of_origin_id: wid,
-      woreda_of_origin: w.name,
-      region_of_origin_id: currentWoreda?.zone?.region?.id || '',
-      region_of_origin: currentWoreda?.zone?.region?.name || '',
-      zone_of_origin_id: currentWoreda?.zone?.id || '',
-      zone_of_origin: currentWoreda?.zone?.name || '',
-      productionSeason: activeSeason.name,
-      totalAmount: w.totalAmount,
-      totalAdjustedAmount: w.totalAdjustedAmount,
-      fertilizerBreakdown: Object.entries(woredaFertMap).map(([type, counts]) => ({ 
-        type, 
-        originalAmount: counts.original,
-        adjustedAmount: counts.adjusted
-      })),
-      fertilizer_totals: woredaFertilizerTotals,
-      kebeles: Object.entries(w.kebeles).map(([kid, k]) => {
-        const kebeleFertMap = kebeleFertilizerMaps[kid] || {};
-        const kebeleFertilizerTotals: Record<string, number> = {};
-        Object.entries(kebeleFertMap).forEach(([type, counts]) => {
-          kebeleFertilizerTotals[type] = counts.adjusted;
-        });
-
-        const currentKebele = currentWoreda?.kebeles.find(kb => kb.id === kid);
-
-        return {
-          kebele_of_origin_id: kid,
-          kebele_of_origin: k.name,
-          woreda_of_origin_id: wid,
-          woreda_of_origin: w.name,
-          region_of_origin_id: currentWoreda?.zone?.region?.id || '',
-          region_of_origin: currentWoreda?.zone?.region?.name || '',
-          zone_of_origin_id: currentWoreda?.zone?.id || '',
-          zone_of_origin: currentWoreda?.zone?.name || '',
-          totalAmount: k.totalAmount,
-          totalAdjustedAmount: k.totalAdjustedAmount,
-          fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, counts]) => ({ 
-            type, 
-            originalAmount: counts.original,
-            adjustedAmount: counts.adjusted
-          })),
-          fertilizer_totals: kebeleFertilizerTotals
-        };
-      })
-    };
-  });
-
-  const zoneFertilizerTotals: Record<string, number> = {};
-  Object.entries(zoneSummaryMap).forEach(([type, counts]) => {
-    zoneFertilizerTotals[type] = counts.adjusted;
   });
 
   return {
-    demands: woredas,
-    pagination: {
-      page: 1, // Placeholder
-      pageSize: woredas.length, // Placeholder
-      totalItems: woredas.length, // Placeholder
-      totalPages: 1, // Placeholder
-    },
+    woredaId: zone.id,
+    woredaName: zone.name,
+    productionSeason: activeSeason.name,
+    totalAmount: zoneTotalAmount,
+    totalAdjustedAmount: zoneTotalAdjustedAmount,
+    fertilizerBreakdown: Object.entries(zoneSummaryMap).map(([type, counts]) => ({
+      type,
+      originalAmount: counts.original,
+      adjustedAmount: counts.adjusted,
+      fertilizerTypeId: counts.fertilizerTypeId
+    })),
   };
 };
 
-export const getRegionSummary = async (user: any, seasonName?: string): Promise<DemandsResponse | null> => {
+export const getRegionSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { regionId, role } = user;
   const [region, activeSeason, flag] = await Promise.all([
     prisma.region.findUnique({
@@ -609,7 +469,12 @@ export const getRegionSummary = async (user: any, seasonName?: string): Promise<
     role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId),
   ]);
 
-  if (!activeSeason || !region) return null;
+  if (!activeSeason) {
+    throw new Error('Active season not found.');
+  }
+  if (!region) {
+    throw new Error(`Region with ID ${regionId} not found.`);
+  }
 
   const demands = await prisma.farmerDemand.findMany({
     where: {
@@ -632,121 +497,34 @@ export const getRegionSummary = async (user: any, seasonName?: string): Promise<
     },
   });
 
-  // Intermediate maps for aggregation
-  const kebeleSummaryMaps: Record<string, Record<string, { original: number; adjusted: number }>> = {}; // kebeleId -> fertilizerType -> {original, adjusted}
-  const woredaSummaryMaps: Record<string, Record<string, { original: number; adjusted: number }>> = {}; // woredaId -> fertilizerType -> {original, adjusted}
-  const zoneSummaryMaps: Record<string, Record<string, { original: number; adjusted: number }>> = {}; // zoneId -> fertilizerType -> {original, adjusted}
-
-  const kebeleTotals: Record<string, { totalAmount: number; totalAdjustedAmount: number }> = {};
-  const woredaTotals: Record<string, { totalAmount: number; totalAdjustedAmount: number }> = {};
-  const zoneTotals: Record<string, { totalAmount: number; totalAdjustedAmount: number }> = {};
+  const regionSummaryMap: Record<string, { original: number, adjusted: number, fertilizerTypeId: string }> = {};
+  let regionTotalAmount = 0;
+  let regionTotalAdjustedAmount = 0;
 
   demands.forEach((d) => {
     const type = d.fertilizerType.name;
-    const kebeleId = d.farmer.kebeleId;
-    const woredaId = d.farmer.kebele.woredaId;
-    const zoneId = d.farmer.kebele.woreda.zoneId;
-    const effective = getEffectiveQty(d); // Assuming getEffectiveQty is defined elsewhere
+    const fertilizerTypeId = d.fertilizerType.id;
+    const effective = getEffectiveQty(d);
 
-    // Initialize if not exists
-    if (!kebeleSummaryMaps[kebeleId]) kebeleSummaryMaps[kebeleId] = {};
-    if (!kebeleSummaryMaps[kebeleId][type]) kebeleSummaryMaps[kebeleId][type] = { original: 0, adjusted: 0 };
-    if (!kebeleTotals[kebeleId]) kebeleTotals[kebeleId] = { totalAmount: 0, totalAdjustedAmount: 0 };
-
-    if (!woredaSummaryMaps[woredaId]) woredaSummaryMaps[woredaId] = {};
-    if (!woredaSummaryMaps[woredaId][type]) woredaSummaryMaps[woredaId][type] = { original: 0, adjusted: 0 };
-    if (!woredaTotals[woredaId]) woredaTotals[woredaId] = { totalAmount: 0, totalAdjustedAmount: 0 };
-
-    if (!zoneSummaryMaps[zoneId]) zoneSummaryMaps[zoneId] = {};
-    if (!zoneSummaryMaps[zoneId][type]) zoneSummaryMaps[zoneId][type] = { original: 0, adjusted: 0 };
-    if (!zoneTotals[zoneId]) zoneTotals[zoneId] = { totalAmount: 0, totalAdjustedAmount: 0 };
-
-    // Aggregate at kebele level
-    kebeleSummaryMaps[kebeleId][type].original += d.originalQuantity;
-    kebeleSummaryMaps[kebeleId][type].adjusted += effective;
-    kebeleTotals[kebeleId].totalAmount += d.originalQuantity;
-    kebeleTotals[kebeleId].totalAdjustedAmount += effective;
-
-    // Aggregate at woreda level
-    woredaSummaryMaps[woredaId][type].original += d.originalQuantity;
-    woredaSummaryMaps[woredaId][type].adjusted += effective;
-    woredaTotals[woredaId].totalAmount += d.originalQuantity;
-    woredaTotals[woredaId].totalAdjustedAmount += effective;
-
-    // Aggregate at zone level
-    zoneSummaryMaps[zoneId][type].original += d.originalQuantity;
-    zoneSummaryMaps[zoneId][type].adjusted += effective;
-    zoneTotals[zoneId].totalAmount += d.originalQuantity;
-    zoneTotals[zoneId].totalAdjustedAmount += effective;
+    if (!regionSummaryMap[type]) regionSummaryMap[type] = { original: 0, adjusted: 0, fertilizerTypeId };
+    regionSummaryMap[type].original += d.originalQuantity;
+    regionSummaryMap[type].adjusted += effective;
+    regionTotalAmount += d.originalQuantity;
+    regionTotalAdjustedAmount += effective;
   });
 
-  const zoneSummaries: DemandSummary[] = [];
-
-  for (const zone of region.zones) {
-    const currentZoneId = zone.id;
-    const currentZoneName = zone.name;
-
-    const zoneFertMap = zoneSummaryMaps[currentZoneId] || {};
-    const zoneFertilizerTotals: Record<string, number> = {};
-    Object.entries(zoneFertMap).forEach(([type, counts]) => {
-      zoneFertilizerTotals[type] = counts.adjusted;
-    });
-
-    const zoneKebeles: Kebele[] = [];
-    for (const woreda of zone.woredas) {
-      for (const kebele of woreda.kebeles) {
-        const currentKebeleId = kebele.id;
-        const currentKebeleName = kebele.name;
-
-        const kebeleFertMap = kebeleSummaryMaps[currentKebeleId] || {};
-        const kebeleFertilizerTotals: Record<string, number> = {};
-        Object.entries(kebeleFertMap).forEach(([type, counts]) => {
-          kebeleFertilizerTotals[type] = counts.adjusted;
-        });
-
-        zoneKebeles.push({
-          kebele_of_origin_id: currentKebeleId,
-          kebele_of_origin: currentKebeleName,
-          totalAmount: kebeleTotals[currentKebeleId]?.totalAmount || 0,
-          totalAdjustedAmount: kebeleTotals[currentKebeleId]?.totalAdjustedAmount || 0,
-          fertilizerBreakdown: Object.entries(kebeleFertMap).map(([type, counts]) => ({
-            type,
-            originalAmount: counts.original,
-            adjustedAmount: counts.adjusted,
-          })),
-          fertilizer_totals: kebeleFertilizerTotals,
-        });
-      }
-    }
-
-    zoneSummaries.push({
-      woreda_of_origin_id: undefined, // Zone-level summary, no specific woreda
-      woreda_of_origin: undefined,    // Zone-level summary, no specific woreda
-      region_of_origin_id: region.id,
-      region_of_origin: region.name,
-      zone_of_origin_id: currentZoneId,
-      zone_of_origin: currentZoneName,
-      productionSeason: activeSeason.name,
-      totalAmount: zoneTotals[currentZoneId]?.totalAmount || 0,
-      totalAdjustedAmount: zoneTotals[currentZoneId]?.totalAdjustedAmount || 0,
-      fertilizerBreakdown: Object.entries(zoneFertMap).map(([type, counts]) => ({
-        type,
-        originalAmount: counts.original,
-        adjustedAmount: counts.adjusted,
-      })),
-      fertilizer_totals: zoneFertilizerTotals,
-      kebeles: zoneKebeles, // Array of actual Kebele objects
-    });
-  }
-
   return {
-    demands: zoneSummaries,
-    pagination: {
-      page: 1, // Placeholder
-      pageSize: zoneSummaries.length, // Placeholder
-      totalItems: zoneSummaries.length, // Placeholder
-      totalPages: 1, // Placeholder
-    },
+    woredaId: region.id,
+    woredaName: region.name,
+    productionSeason: activeSeason.name,
+    totalAmount: regionTotalAmount,
+    totalAdjustedAmount: regionTotalAdjustedAmount,
+    fertilizerBreakdown: Object.entries(regionSummaryMap).map(([type, counts]) => ({
+      type,
+      originalAmount: counts.original,
+      adjustedAmount: counts.adjusted,
+      fertilizerTypeId: counts.fertilizerTypeId
+    })),
   };
 };
 

@@ -11,7 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "test": "jest"
+    "test": "node --experimental-vm-modules ./node_modules/.bin/jest --runInBand"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

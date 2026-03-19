@@ -7,6 +7,21 @@ export interface FertilizerBreakdown {
   type: string;
   originalAmount: number;
   adjustedAmount: number;
+  fertilizerTypeId: string;
+}
+
+export interface DashboardSummaryOutput {
+  woredaId: string;
+  woredaName: string;
+  productionSeason: string;
+  totalAmount: number;
+  totalAdjustedAmount: number;
+  fertilizerBreakdown: Array<{
+    type: string;
+    originalAmount: number;
+    adjustedAmount: number;
+    fertilizerTypeId: string;
+  }>;
 }
 
 export type Kebele = {

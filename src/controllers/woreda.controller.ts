@@ -7,10 +7,7 @@ import * as demandService from '../services/demand.service.js';
 export const getWoredaSummary = asyncHandler(async (req: Request, res: Response) => {
   const { seasonName } = req.query;
   const result = await demandService.getWoredaSummary(req.user, seasonName as string);
-  if (!result) {
-    res.status(404);
-    throw new Error('No active season found');
-  }
+
   res.json(result);
 });
 
