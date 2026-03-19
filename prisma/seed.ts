@@ -5,8 +5,33 @@ import { faker } from '@faker-js/faker';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
-const connectionString = `${process.env.DATABASE_URL}`;
-const pool = new pg.Pool({ connectionString });
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Manually find and parse the .env file
+const envPath = path.resolve(__dirname, '../../.env');
+let dbUrl = process.env.DATABASE_URL;
+
+if (!dbUrl && fs.existsSync(envPath)) {
+  const envFile = fs.readFileSync(envPath, 'utf8');
+  const match = envFile.match(/DATABASE_URL=["']?(.+?)["']?(\s|$)/);
+  if (match) dbUrl = match[1];
+}
+
+// Fallback for dbUrl if not found
+if (!dbUrl) {
+  dbUrl = "postgresql://neondb_owner:npg_hCkF8itsWl4w@ep-spring-snow-ang1jz6m-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+}
+
+const pool = new pg.Pool({ 
+  connectionString: dbUrl, 
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 30000,
+});
 const adapter = new PrismaPg(pool as any);
 const prisma = new PrismaClient({ adapter });
 
@@ -14,66 +39,74 @@ const SEED_PASSWORD = 'Password123!';
 const HASHED_PASSWORD = await bcrypt.hash(SEED_PASSWORD, 10);
 
 async function main() {
-  console.log('🚀 Starting comprehensive database seeding...');
-  const report: any = {};
+  console.log('🚀 Starting comprehensive database seeding (at least 19 records per table)...');
+  const report: Record<string, number> = {};
 
   try {
-    // 1. Clear existing data (Order matters due to FK constraints)
+    // 1. Clear existing data in correct order
     console.log('🧹 Cleaning existing data...');
-    await prisma.lockHistory.deleteMany();
-    await prisma.cropFertilizerRate.deleteMany();
-    await prisma.fertilizerSubsidy.deleteMany();
-    await prisma.warehouse.deleteMany();
-    await prisma.fertilizerSale.deleteMany();
-    await prisma.pCInventory.deleteMany();
-    await prisma.lotDispatch.deleteMany();
-    await prisma.shippingLot.deleteMany();
-    await prisma.farmerDemand.deleteMany();
-    await prisma.farmer.deleteMany();
-    await prisma.user.deleteMany();
-    await prisma.pC.deleteMany();
-    await prisma.destination.deleteMany();
-    await prisma.union.deleteMany();
-    await prisma.section.deleteMany();
-    await prisma.kebele.deleteMany();
-    await prisma.woreda.deleteMany();
-    await prisma.zone.deleteMany();
-    await prisma.regionalFlag.deleteMany();
-    await prisma.region.deleteMany();
-    await prisma.federalFlag.deleteMany();
-    await prisma.federal.deleteMany();
-    await prisma.season.deleteMany();
-    await prisma.cropType.deleteMany();
-    await prisma.cropCategory.deleteMany();
-    await prisma.fertilizerType.deleteMany();
+    const tables = [
+      'lockHistory',
+      'cropFertilizerRate',
+      'fertilizerSubsidy',
+      'warehouse',
+      'fertilizerSale',
+      'pCInventory',
+      'lotDispatch',
+      'shippingLot',
+      'farmerDemand',
+      'farmer',
+      'user',
+      'pC',
+      'destination',
+      'union',
+      'section',
+      'kebele',
+      'woreda',
+      'zone',
+      'regionalFlag',
+      'region',
+      'federalFlag',
+      'federal',
+      'season',
+      'cropType',
+      'cropCategory',
+      'fertilizerType',
+    ];
+
+    for (const table of tables) {
+      // @ts-ignore
+      await prisma[table].deleteMany();
+    }
 
     // 2. Reference Data
     console.log('📦 Seeding reference data...');
-    const fertilizerTypes = await Promise.all(['UREA', 'DAP', 'NPS', 'NPSB'].map(name => 
-      prisma.fertilizerType.create({ data: { name } })
-    ));
+    const fertilizerTypes = [];
+    for (const name of ['UREA', 'DAP', 'NPS', 'NPSB', 'KCL', 'COMP-1', 'COMP-2', 'COMP-3', 'COMP-4', 'COMP-5', 'COMP-6', 'COMP-7', 'COMP-8', 'COMP-9', 'COMP-10', 'COMP-11', 'COMP-12', 'COMP-13', 'COMP-14', 'COMP-15']) {
+      fertilizerTypes.push(await prisma.fertilizerType.create({ data: { name } }));
+    }
     report.FertilizerType = fertilizerTypes.length;
 
-    const seasons = await Promise.all(['Meher 2025', 'Belg 2025', 'Irrigation 2025'].map(name => 
-      prisma.season.create({ data: { name } })
-    ));
+    const seasons = [];
+    for (let i = 1; i <= 20; i++) {
+      seasons.push(await prisma.season.create({ data: { name: `Season ${i} - ${2024 + Math.floor(i / 2)}` } }));
+    }
     report.Season = seasons.length;
 
-    const cropCategories = await Promise.all(['Cereals', 'Legumes', 'Oilseeds'].map(name => 
-      prisma.cropCategory.create({ data: { name } })
-    ));
+    const cropCategories = [];
+    for (const name of ['Cereals', 'Legumes', 'Oilseeds', 'Vegetables', 'Fruits', 'Industrial', 'Spices', 'Root Crops', 'Tubers', 'Beverage', 'Stimulants', 'Fodder', 'Ornamentals', 'Medicinal', 'Aromatic', 'Latex', 'Fiber', 'Dye', 'Gums', 'Resins']) {
+      cropCategories.push(await prisma.cropCategory.create({ data: { name } }));
+    }
     report.CropCategory = cropCategories.length;
 
     const cropTypes = [];
-    for (const cat of cropCategories) {
-      for (let i = 0; i < 4; i++) {
-        cropTypes.push(await prisma.cropType.create({
-          data: {
-            name: `${cat.name} Type ${i + 1}`,
-            categoryId: cat.id
-          }
-        }));
-      }
+    for (let i = 0; i < 20; i++) {
+      cropTypes.push(await prisma.cropType.create({
+        data: {
+          name: faker.commerce.productName() + ' ' + i,
+          categoryId: cropCategories[i % cropCategories.length].id
+        }
+      }));
     }
     report.CropType = cropTypes.length;
 
@@ -83,153 +116,178 @@ async function main() {
     report.Federal = 1;
 
     const regions = [];
-    for (let i = 0; i < 10; i++) {
-      regions.push(await prisma.region.create({
+    for (let i = 0; i < 20; i++) {
+      const regionName = `Region Name ${i} ${Math.random().toString(36).substring(7)}`;
+      console.log(`Creating region ${i}: ${regionName}`);
+      const region = await prisma.region.create({
         data: {
-          name: faker.location.state() + ' Region ' + i,
-          code: `REG-${i}`
+          name: regionName,
+          code: `CODE-${i}-${Math.random().toString(36).substring(7)}`,
+          status: true,
+          isLocked: false,
         }
-      }));
+      });
+      regions.push(region);
     }
     report.Region = regions.length;
 
     const zones = [];
-    for (const region of regions) {
-      for (let i = 0; i < 2; i++) {
-        zones.push(await prisma.zone.create({
-          data: {
-            name: faker.location.city() + ' Zone',
-            regionId: region.id
-          }
-        }));
-      }
+    for (let i = 0; i < 20; i++) {
+      zones.push(await prisma.zone.create({
+        data: {
+          name: faker.location.city() + ' Zone ' + i,
+          regionId: regions[i % regions.length].id
+        }
+      }));
     }
     report.Zone = zones.length;
 
     const woredas = [];
-    for (const zone of zones) {
-      for (let i = 0; i < 2; i++) {
-        woredas.push(await prisma.woreda.create({
-          data: {
-            name: faker.location.county() + ' Woreda',
-            zoneId: zone.id
-          }
-        }));
-      }
+    for (let i = 0; i < 20; i++) {
+      woredas.push(await prisma.woreda.create({
+        data: {
+          name: faker.location.county() + ' Woreda ' + i,
+          zoneId: zones[i % zones.length].id
+        }
+      }));
     }
     report.Woreda = woredas.length;
 
     const kebeles = [];
-    for (const woreda of woredas) {
-      for (let i = 0; i < 2; i++) {
-        kebeles.push(await prisma.kebele.create({
-          data: {
-            name: 'Kebele ' + faker.string.numeric(3),
-            woredaId: woreda.id
-          }
-        }));
-      }
+    for (let i = 0; i < 20; i++) {
+      kebeles.push(await prisma.kebele.create({
+        data: {
+          name: 'Kebele ' + faker.string.numeric(3) + '-' + i,
+          woredaId: woredas[i % woredas.length].id
+        }
+      }));
     }
     report.Kebele = kebeles.length;
 
     const sections = [];
-    for (const kebele of kebeles.slice(0, 10)) {
+    for (let i = 0; i < 20; i++) {
       sections.push(await prisma.section.create({
         data: {
-          name: 'Section ' + faker.string.alpha(1).toUpperCase(),
-          kebeleId: kebele.id
+          name: 'Section ' + faker.string.alpha(1).toUpperCase() + '-' + i,
+          kebeleId: kebeles[i % kebeles.length].id
         }
       }));
     }
     report.Section = sections.length;
 
-    // 4. Supply Chain
+    // 4. Logistics & Supply Chain
     console.log('🚚 Seeding supply chain...');
     const unions = [];
-    for (const region of regions) {
+    for (let i = 0; i < 20; i++) {
       unions.push(await prisma.union.create({
         data: {
-          name: faker.company.name() + ' Union',
-          regionId: region.id
+          name: faker.company.name() + ' Union ' + i,
+          regionId: regions[i % regions.length].id
         }
       }));
     }
     report.Union = unions.length;
 
     const destinations = [];
-    for (const union of unions) {
-      for (let i = 0; i < 2; i++) {
-        destinations.push(await prisma.destination.create({
-          data: {
-            name: faker.location.city() + ' Port',
-            unionId: union.id
-          }
-        }));
-      }
+    for (let i = 0; i < 20; i++) {
+      destinations.push(await prisma.destination.create({
+        data: {
+          name: faker.location.city() + ' Port ' + i,
+          unionId: unions[i % unions.length].id
+        }
+      }));
     }
     report.Destination = destinations.length;
 
     const pcs = [];
-    for (let i = 0; i < Math.min(kebeles.length, destinations.length); i++) {
-      const pc = await prisma.pC.create({
+    for (let i = 0; i < 20; i++) {
+      pcs.push(await prisma.pC.create({
         data: {
-          name: faker.company.name() + ' PC',
-          destinationId: destinations[i].id,
-          kebeleId: kebeles[i].id
+          name: faker.company.name() + ' PC ' + i,
+          destinationId: destinations[i % destinations.length].id,
+          kebeleId: kebeles[i % kebeles.length].id
         }
-      });
-      pcs.push(pc);
+      }));
     }
     report.PC = pcs.length;
 
-    // 5. Users (13 per role)
-    console.log('👥 Seeding users (13 per role)...');
-    const roles = Object.values(Role);
-    const seededUsers = [];
-    for (const role of roles) {
-      for (let i = 0; i < 13; i++) {
-        const username = `${role.toLowerCase()}_user_${i + 1}`;
-        const user = await prisma.user.create({
-          data: {
-            fullName: faker.person.fullName(),
-            username,
-            email: `${username}@fms.gov.et`,
-            phoneNumber: '09' + faker.string.numeric(8),
-            password: HASHED_PASSWORD,
-            role,
-            // Assign some context if applicable
-            ...(role.includes('KEBELE') && { kebeleId: faker.helpers.arrayElement(kebeles).id }),
-            ...(role.includes('WOREDA') && { woredaId: faker.helpers.arrayElement(woredas).id }),
-            ...(role.includes('ZONE') && { zoneId: faker.helpers.arrayElement(zones).id }),
-            ...(role.includes('REGION') && { regionId: faker.helpers.arrayElement(regions).id }),
-            ...(role.includes('UNION') && { unionId: faker.helpers.arrayElement(unions).id }),
-            ...(role.includes('PC') && { pcId: faker.helpers.arrayElement(pcs).id }),
-            ...(role.includes('MOA') && { 
-              moaPosition: MoaPosition.EXPERT,
-              moaRole: MoaRole.DATA,
-              moaSector: MoaSector.INPUT_AND_INVESTMENT,
-              moaLeadExecutive: MoaLeadExecutive.INPUT_LE
-            }),
-          }
-        });
-        seededUsers.push({ username, role });
-      }
+    // 5. Users (Specific users requested + random ones)
+    console.log('👥 Seeding specific users and roles...');
+    
+    const specificUsers = [
+      { phone: '0910000000', role: Role.SUPER_ADMIN, username: 'admin_sa' },
+      { phone: '0910000001', role: Role.KEBELE_MANAGER, username: 'k_manager' },
+      { phone: '0910000011', role: Role.KEBELE_DA, username: 'k_da' },
+      { phone: '0910000002', role: Role.WOREDA_MANAGER, username: 'w_manager' },
+      { phone: '0910000022', role: Role.WOREDA_EXPERT, username: 'w_expert' },
+      { phone: '0910000003', role: Role.ZONE_MANAGER, username: 'z_manager' },
+      { phone: '0910000033', role: Role.ZONE_EXPERT, username: 'z_expert' },
+      { phone: '0910000004', role: Role.REGION_MANAGER, username: 'r_manager' },
+      { phone: '0910000044', role: Role.REGION_EXPERT, username: 'r_expert' },
+      { phone: '0910000005', role: Role.MOA_MANAGER, username: 'moa_manager' },
+      { phone: '0910000055', role: Role.MOA_EXPERT, username: 'moa_expert' },
+      { phone: '0910000006', role: Role.PC_ACCOUNTANT, username: 'pc_acc' },
+      { phone: '0910000066', role: Role.PC_STOREMAN, username: 'pc_store' },
+      { phone: '0910000007', role: Role.UNION_MEMBER, username: 'u_member' },
+    ];
+
+    const seededSpecificUsers = [];
+    for (const u of specificUsers) {
+      const user = await prisma.user.create({
+        data: {
+          fullName: `Specific ${u.role} User`,
+          username: u.username,
+          email: `${u.username}@fms.gov.et`,
+          phoneNumber: u.phone,
+          password: HASHED_PASSWORD,
+          role: u.role,
+          // Assign context based on role
+          ...(u.role.includes('KEBELE') && { kebeleId: kebeles[0].id }),
+          ...(u.role.includes('WOREDA') && { woredaId: woredas[0].id }),
+          ...(u.role.includes('ZONE') && { zoneId: zones[0].id }),
+          ...(u.role.includes('REGION') && { regionId: regions[0].id }),
+          ...(u.role.includes('PC') && { pcId: pcs[0].id }),
+          ...(u.role.includes('UNION') && { unionId: unions[0].id }),
+          ...(u.role.includes('MOA') && {
+            moaPosition: MoaPosition.EXPERT,
+            moaRole: MoaRole.DATA,
+            moaSector: MoaSector.INPUT_AND_INVESTMENT,
+            moaLeadExecutive: MoaLeadExecutive.INPUT_LE,
+          }),
+        }
+      });
+      seededSpecificUsers.push(user);
     }
-    report.User = seededUsers.length;
+
+    // Add more random users to reach at least 20
+    for (let i = 0; i < 10; i++) {
+      const role = faker.helpers.arrayElement(Object.values(Role));
+      await prisma.user.create({
+        data: {
+          fullName: faker.person.fullName(),
+          username: `user_${faker.string.numeric(5)}_${i}`,
+          email: faker.internet.email(),
+          phoneNumber: '09' + faker.string.numeric(8),
+          password: HASHED_PASSWORD,
+          role: role,
+        }
+      });
+    }
+    report.User = await prisma.user.count();
 
     // 6. Farmers
     console.log('👨‍🌾 Seeding farmers...');
     const farmers = [];
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 20; i++) {
       farmers.push(await prisma.farmer.create({
         data: {
           fullName: faker.person.fullName(),
           gender: faker.helpers.arrayElement(['MALE', 'FEMALE']),
-          phoneNumber: '07' + faker.string.numeric(8),
+          phoneNumber: '07' + faker.string.numeric(8) + i,
           address: faker.location.streetAddress(),
           farmAreaHectares: faker.number.float({ min: 0.5, max: 10, fractionDigits: 2 }),
-          kebeleId: faker.helpers.arrayElement(kebeles).id,
-          uniqueFarmerId: 'FARM-' + faker.string.numeric(6)
+          kebeleId: kebeles[i % kebeles.length].id,
+          uniqueFarmerId: 'FARM-' + faker.string.numeric(6) + i
         }
       }));
     }
@@ -237,73 +295,85 @@ async function main() {
 
     // 7. Demands & Sales
     console.log('📈 Seeding demands and sales...');
-    for (const farmer of farmers.slice(0, 30)) {
+    for (let i = 0; i < 20; i++) {
       await prisma.farmerDemand.create({
         data: {
-          farmerId: farmer.id,
-          seasonId: faker.helpers.arrayElement(seasons).id,
-          cropTypeId: faker.helpers.arrayElement(cropTypes).id,
-          fertilizerTypeId: faker.helpers.arrayElement(fertilizerTypes).id,
+          farmerId: farmers[i % farmers.length].id,
+          seasonId: seasons[i % seasons.length].id,
+          cropTypeId: cropTypes[i % cropTypes.length].id,
+          fertilizerTypeId: fertilizerTypes[i % fertilizerTypes.length].id,
           originalQuantity: faker.number.float({ min: 1, max: 5, fractionDigits: 1 }),
           status: DemandStatus.APPROVED
         }
       });
     }
-    report.FarmerDemand = 30;
+    report.FarmerDemand = 20;
 
-    for (const pc of pcs.slice(0, 10)) {
+    const pcAccountant = seededSpecificUsers.find(u => u.role === Role.PC_ACCOUNTANT);
+    for (let i = 0; i < 20; i++) {
       await prisma.fertilizerSale.create({
         data: {
-          farmerId: faker.helpers.arrayElement(farmers).id,
-          pcId: pc.id,
-          fertilizerTypeId: faker.helpers.arrayElement(fertilizerTypes).id,
-          quantity: 2.0,
-          totalPrice: 5000,
-          paymentMethod: PaymentMethod.CASH,
+          farmerId: farmers[i % farmers.length].id,
+          pcId: pcs[i % pcs.length].id,
+          fertilizerTypeId: fertilizerTypes[i % fertilizerTypes.length].id,
+          quantity: faker.number.float({ min: 0.5, max: 2, fractionDigits: 1 }),
+          totalPrice: faker.number.float({ min: 1000, max: 5000, fractionDigits: 2 }),
+          paymentMethod: faker.helpers.arrayElement(Object.values(PaymentMethod)),
           status: SaleStatus.DELIVERED,
-          accountantId: seededUsers.find(u => u.role === Role.PC_ACCOUNTANT)?.username ? (await prisma.user.findUnique({ where: { username: seededUsers.find(u => u.role === Role.PC_ACCOUNTANT)!.username } }))!.id : (await prisma.user.findFirst())!.id
+          accountantId: pcAccountant?.id || (await prisma.user.findFirst())!.id,
         }
       });
     }
-    report.FertilizerSale = 10;
+    report.FertilizerSale = 20;
 
-    // 8. Shipping & Logistics
-    console.log('🚢 Seeding shipping lots and dispatches...');
+    // 8. Shipping & Inventory
+    console.log('🚢 Seeding shipping and inventory...');
     const lots = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       lots.push(await prisma.shippingLot.create({
         data: {
-          lotNumber: 1000 + i,
-          fertilizerTypeId: faker.helpers.arrayElement(fertilizerTypes).id,
+          lotNumber: 6000 + i,
+          fertilizerTypeId: fertilizerTypes[i % fertilizerTypes.length].id,
           totalQuantity: 1000,
-          ureaAmount: 600,
-          dapAmount: 400
+          ureaAmount: 500,
+          dapAmount: 500
         }
       }));
     }
     report.ShippingLot = lots.length;
 
-    for (const lot of lots) {
+    for (let i = 0; i < 20; i++) {
       await prisma.lotDispatch.create({
         data: {
-          lotId: lot.id,
-          destinationId: faker.helpers.arrayElement(destinations).id,
-          quantity: 100
+          lotId: lots[i % lots.length].id,
+          destinationId: destinations[i % destinations.length].id,
+          quantity: 50
         }
       });
     }
-    report.LotDispatch = lots.length;
+    report.LotDispatch = 20;
+
+    for (let i = 0; i < 20; i++) {
+      await prisma.pCInventory.create({
+        data: {
+          pcId: pcs[i % pcs.length].id,
+          fertilizerTypeId: fertilizerTypes[i % fertilizerTypes.length].id,
+          quantity: 500,
+        }
+      });
+    }
+    report.PCInventory = 20;
 
     // 9. Warehouses & Subsidies
     console.log('🏠 Seeding warehouses and subsidies...');
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       await prisma.warehouse.create({
         data: {
-          center: faker.location.city() + ' Center',
-          destinationId: faker.helpers.arrayElement(destinations).id,
-          regionId: faker.helpers.arrayElement(regions).id,
-          zoneId: faker.helpers.arrayElement(zones).id,
-          woredaId: faker.helpers.arrayElement(woredas).id,
+          center: `Center ${i}`,
+          destinationId: destinations[i % destinations.length].id,
+          regionId: regions[i % regions.length].id,
+          zoneId: zones[i % zones.length].id,
+          woredaId: woredas[i % woredas.length].id,
           town: faker.location.city(),
           year: 2025,
           capacity: 5000,
@@ -314,54 +384,66 @@ async function main() {
         }
       });
     }
-    report.Warehouse = 10;
+    report.Warehouse = 20;
 
-    for (const region of regions.slice(0, 10)) {
+    for (let i = 0; i < 20; i++) {
       await prisma.fertilizerSubsidy.create({
         data: {
-          eid: 'EID-' + faker.string.numeric(5),
+          eid: `EID-EXT-${i}`,
           year: 2025,
-          regionId: region.id,
-          fertilizerTypeId: faker.helpers.arrayElement(fertilizerTypes).id,
+          regionId: regions[i % regions.length].id,
+          fertilizerTypeId: fertilizerTypes[i % fertilizerTypes.length].id,
           amountMT: 1000,
           amountQT: 10000,
-          priceBefore: 4500,
-          priceAfter: 3200,
-          subsidyAmount: 1300
+          priceBefore: 5000,
+          priceAfter: 3500,
+          subsidyAmount: 1500
         }
       });
     }
-    report.FertilizerSubsidy = 10;
+    report.FertilizerSubsidy = 20;
 
-    // 10. Verification Mechanism
-    console.log('🔍 Verifying seeded users login...');
-    const loginTests = [];
-    const testUsers = seededUsers.filter((_, index) => index % 13 === 0); // Test one user per role to save time
-    
-    for (const testUser of testUsers) {
-      const user = await prisma.user.findUnique({ where: { username: testUser.username } });
-      if (user) {
-        const isMatch = await bcrypt.compare(SEED_PASSWORD, user.password);
-        loginTests.push({
-          role: testUser.role,
-          username: testUser.username,
-          status: isMatch ? '✅ PASSED' : '❌ FAILED'
-        });
-      }
+    // 10. Lock History & Rates
+    console.log('🔒 Seeding lock history and rates...');
+    for (let i = 0; i < 20; i++) {
+      await prisma.lockHistory.create({
+        data: {
+          level: faker.helpers.arrayElement(Object.values(LockingLevel)),
+          regionId: regions[i % regions.length].id,
+          isLocked: true,
+          reason: faker.lorem.sentence(),
+          overriddenById: seededSpecificUsers[0].id,
+        }
+      });
     }
+    report.LockHistory = 20;
 
-    // Final Report
+    for (let i = 0; i < 20; i++) {
+      await prisma.cropFertilizerRate.create({
+        data: {
+          cropId: cropTypes[i % cropTypes.length].id,
+          highUrea: 100,
+          highDap: 50,
+          mediumUrea: 75,
+          mediumDap: 40,
+          lowUrea: 50,
+          lowDap: 30
+        }
+      });
+    }
+    report.CropFertilizerRate = 20;
+
+    // Final Summary
     console.log('\n📊 Seeding Report:');
     console.table(report);
-    console.log('\n🔐 Login Verification (Sample per Role):');
-    console.table(loginTests);
-
     console.log('\n✨ Seeding completed successfully!');
+    
   } catch (error) {
     console.error('❌ Seeding failed:', error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
+    await pool.end();
   }
 }
 

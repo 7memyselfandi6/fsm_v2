@@ -429,6 +429,7 @@ enum Role {
   PC_STOREMAN
   UNION_MEMBER
   FARMER
+  GUEST
 }
 
 enum MoaPosition {
