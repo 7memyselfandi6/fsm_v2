@@ -10,8 +10,7 @@ import {
 import {
   postTotalAdjusted,
   editAdjustment,
-  getEnhancedDashboard,
-  getAdjustmentHistory
+  getEnhancedDashboard
 } from '../controllers/enhancedDashboard.controller.js';
 import {
   lockWoreda,
@@ -30,22 +29,13 @@ router.post('/division-lock', auditLog('WOREDA_DIVISION_LOCK'), lockWoreda);
 router.post('/bulk-lock', authorizeRole(['ZONE_MANAGER', 'REGION_MANAGER', 'SUPER_ADMIN']), auditLog('WOREDA_BULK_LOCK'), bulkLockWoreda);
 router.get('/lock-status', auditLog('FETCH_WOREDA_LOCK_STATUS'), getWoredaLockStatus);
 
-router.get('/dashboard-summary', auditLog('FETCH_WOREDA_SUMMARY'), getEnhancedDashboard('woreda', ['name']));
-router.get('/adjust', auditLog('FETCH_WOREDA_ADJUSTMENT_HISTORY'), (req, res, next) => {
-  req.params.level = 'woreda';
-  getAdjustmentHistory(req, res, next);
-});
+router.get('/dashboard-summary', auditLog('FETCH_WOREDA_SUMMARY'), getWoredaSummary);
+router.get('/dashboard-enhanced', auditLog('FETCH_WOREDA_DASHBOARD_ENHANCED'), getEnhancedDashboard('woreda', ['name']));
 router.get('/detail-list', auditLog('FETCH_WOREDA_DETAIL_LIST'), getWoredaDetailList);
 router.get('/adjustment-table', auditLog('FETCH_WOREDA_ADJUSTMENT_TABLE'), getWoredaAdjustmentTable);
 router.post('/lock', auditLog('WOREDA_LOCK_DEMAND'), woredaLock);
 router.post('/adjust', auditLog('WOREDA_ADJUST_DEMAND'), woredaAdjust);
-router.post('/total-adjusted-fertilizers', auditLog('POST_WOREDA_TOTAL_ADJUSTED'), (req, res, next) => {
-  req.params.level = 'woreda';
-  postTotalAdjusted(req, res, next);
-});
-router.put('/adjust/:id', auditLog('EDIT_WOREDA_ADJUSTMENT'), (req, res, next) => {
-  req.params.level = 'woreda';
-  editAdjustment(req, res, next);
-});
+router.post('/total-adjusted-fertilizers', auditLog('POST_WOREDA_TOTAL_ADJUSTED'), postTotalAdjusted);
+router.put('/adjust/:id', auditLog('EDIT_WOREDA_ADJUSTMENT'), editAdjustment);
 
 export default router;

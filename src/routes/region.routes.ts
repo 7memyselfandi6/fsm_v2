@@ -10,8 +10,7 @@ import {
 import {
   postTotalAdjusted,
   editAdjustment,
-  getEnhancedDashboard,
-  getAdjustmentHistory
+  getEnhancedDashboard
 } from '../controllers/enhancedDashboard.controller.js';
 import {
   lockRegion,
@@ -30,22 +29,13 @@ router.post('/division-lock', auditLog('REGION_DIVISION_LOCK'), lockRegion);
 router.post('/bulk-lock', authorizeRole(['SUPER_ADMIN']), auditLog('REGION_BULK_LOCK'), bulkLockRegion);
 router.get('/lock-status', auditLog('FETCH_REGION_LOCK_STATUS'), getRegionLockStatus);
 
-router.get('/dashboard-summary', auditLog('FETCH_REGION_SUMMARY'), getEnhancedDashboard('region', ['name', 'code']));
-router.get('/adjust', auditLog('FETCH_REGION_ADJUSTMENT_HISTORY'), (req, res, next) => {
-  req.params.level = 'region';
-  getAdjustmentHistory(req, res, next);
-});
+router.get('/dashboard-summary', auditLog('FETCH_REGION_SUMMARY'), getRegionSummary);
+router.get('/dashboard-enhanced', auditLog('FETCH_REGION_DASHBOARD_ENHANCED'), getEnhancedDashboard('region', ['name', 'code']));
 router.get('/detail-list', auditLog('FETCH_REGION_DETAIL_LIST'), getRegionDetailList);
 router.get('/adjustment-table', auditLog('FETCH_REGION_ADJUSTMENT_TABLE'), getRegionAdjustmentTable);
 router.post('/lock', auditLog('REGION_LOCK_DEMAND'), regionLock);
 router.post('/adjust', auditLog('REGION_ADJUST_DEMAND'), regionAdjust);
-router.post('/total-adjusted-fertilizers', auditLog('POST_REGION_TOTAL_ADJUSTED'), (req, res, next) => {
-  req.params.level = 'region';
-  postTotalAdjusted(req, res, next);
-});
-router.put('/adjust/:id', auditLog('EDIT_REGION_ADJUSTMENT'), (req, res, next) => {
-  req.params.level = 'region';
-  editAdjustment(req, res, next);
-});
+router.post('/total-adjusted-fertilizers', auditLog('POST_REGION_TOTAL_ADJUSTED'), postTotalAdjusted);
+router.put('/adjust/:id', auditLog('EDIT_REGION_ADJUSTMENT'), editAdjustment);
 
 export default router;

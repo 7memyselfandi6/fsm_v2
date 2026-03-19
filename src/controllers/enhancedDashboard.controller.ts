@@ -17,7 +17,6 @@ export const postTotalAdjusted = asyncHandler(async (req: Request, res: Response
     res.status(422);
     throw new Error('parentId, totalAmount, and distributions are required');
   }
-git
   const levelMap: Record<string, LockingLevel> = {
     federal: LockingLevel.MOA,
     region: LockingLevel.REGION,
@@ -26,8 +25,7 @@ git
     kebele: LockingLevel.KEBELE
   };
 
-  const levelStr = level as string;
-  const lockingLevel = levelMap[levelStr.toLowerCase()];
+  const lockingLevel = levelMap[typeof level === 'string' ? level.toLowerCase() : level[0].toLowerCase()];
   if (!lockingLevel) {
     res.status(400);
     throw new Error('Invalid administrative level');
@@ -35,7 +33,7 @@ git
 
   const result = await adjustmentService.adjustDemand(
     lockingLevel,
-    parentId as string,
+    parentId,
     totalAmount,
     distributions,
     req.user.id,
@@ -53,6 +51,7 @@ export const editAdjustment = asyncHandler(async (req: Request, res: Response) =
   const { level, id } = req.params;
   const { totalAmount, distributions, reason } = req.body;
 
+  // Hierarchical locking check is performed inside the service
   const levelMap: Record<string, LockingLevel> = {
     federal: LockingLevel.MOA,
     region: LockingLevel.REGION,
@@ -61,12 +60,11 @@ export const editAdjustment = asyncHandler(async (req: Request, res: Response) =
     kebele: LockingLevel.KEBELE
   };
 
-  const levelStr = level as string;
-  const lockingLevel = levelMap[levelStr.toLowerCase()];
+  const lockingLevel = levelMap[typeof level === 'string' ? level.toLowerCase() : level[0].toLowerCase()];
   
   const result = await adjustmentService.adjustDemand(
     lockingLevel,
-    id as string, 
+    Array.isArray(id) ? id[0] : id, // parentId is the entity being adjusted
     totalAmount,
     distributions,
     req.user.id,
@@ -78,7 +76,7 @@ export const editAdjustment = asyncHandler(async (req: Request, res: Response) =
 
 /**
  * @desc    Enhanced dashboard summary with pagination, filter, search
- * @route   GET /api/:level/dashboard-summary
+ * @route   GET /api/:level/dashboard-enhanced
  */
 export const getEnhancedDashboard = (modelName: string, searchFields: string[] = []) => 
   asyncHandler(async (req: Request, res: Response) => {
@@ -91,6 +89,7 @@ export const getEnhancedDashboard = (modelName: string, searchFields: string[] =
     const [records, totalCount] = await Promise.all([
       model.findMany({
         ...prismaQuery,
+        // Include common relations for dashboards
         include: {
           _count: true
         }
@@ -103,47 +102,4 @@ export const getEnhancedDashboard = (modelName: string, searchFields: string[] =
       data: records,
       metadata: getPaginationMetadata(totalCount, params.page, params.limit)
     });
-});
-
-/**
- * @desc    Get adjustment history with pagination/filtering
- * @route   GET /api/:level/adjust
- */
-export const getAdjustmentHistory = asyncHandler(async (req: Request, res: Response) => {
-  const { level } = req.params;
-  const params = parseQueryParams(req.query);
-  
-  // Add level filter automatically
-  const levelMap: Record<string, LockingLevel> = {
-    federal: LockingLevel.MOA,
-    region: LockingLevel.REGION,
-    zone: LockingLevel.ZONE,
-    woreda: LockingLevel.WOREDA,
-    kebele: LockingLevel.KEBELE
-  };
-  
-  const levelStr = level as string;
-  if (levelStr && levelMap[levelStr.toLowerCase()]) {
-    params.filters.level = levelMap[levelStr.toLowerCase()];
-  }
-
-  const prismaQuery = buildPrismaQuery(params, ['reason', 'entityType']);
-  
-  const [records, totalCount] = await Promise.all([
-    prisma.adjustmentHistory.findMany({
-      ...prismaQuery,
-      include: {
-        user: {
-          select: { fullName: true, username: true }
-        }
-      }
-    }),
-    prisma.adjustmentHistory.count({ where: prismaQuery.where })
-  ]);
-
-  res.json({
-    success: true,
-    data: records,
-    metadata: getPaginationMetadata(totalCount, params.page, params.limit)
-  });
 });

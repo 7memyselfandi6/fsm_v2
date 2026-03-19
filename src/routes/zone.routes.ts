@@ -1,6 +1,7 @@
 import express from 'express';
 import { protect, authorizeRole } from '../middlewares/auth.middleware.js';
 import {
+  getZoneSummary,
   getZoneDetailList,
   getZoneAdjustmentTable,
   zoneLock,
@@ -9,8 +10,7 @@ import {
 import {
   postTotalAdjusted,
   editAdjustment,
-  getEnhancedDashboard,
-  getAdjustmentHistory
+  getEnhancedDashboard
 } from '../controllers/enhancedDashboard.controller.js';
 import {
   lockZone,
@@ -29,22 +29,13 @@ router.post('/division-lock', auditLog('ZONE_DIVISION_LOCK'), lockZone);
 router.post('/bulk-lock', authorizeRole(['REGION_MANAGER', 'SUPER_ADMIN']), auditLog('ZONE_BULK_LOCK'), bulkLockZone);
 router.get('/lock-status', auditLog('FETCH_ZONE_LOCK_STATUS'), getZoneLockStatus);
 
-router.get('/dashboard-summary', auditLog('FETCH_ZONE_SUMMARY'), getEnhancedDashboard('zone', ['name']));
-router.get('/adjust', auditLog('FETCH_ZONE_ADJUSTMENT_HISTORY'), (req, res, next) => {
-  req.params.level = 'zone';
-  getAdjustmentHistory(req, res, next);
-});
+router.get('/dashboard-summary', auditLog('FETCH_ZONE_SUMMARY'), getZoneSummary);
+router.get('/dashboard-enhanced', auditLog('FETCH_ZONE_DASHBOARD_ENHANCED'), getEnhancedDashboard('zone', ['name']));
 router.get('/detail-list', auditLog('FETCH_ZONE_DETAIL_LIST'), getZoneDetailList);
 router.get('/adjustment-table', auditLog('FETCH_ZONE_ADJUSTMENT_TABLE'), getZoneAdjustmentTable);
 router.post('/lock', auditLog('ZONE_LOCK_DEMAND'), zoneLock);
 router.post('/adjust', auditLog('ZONE_ADJUST_DEMAND'), zoneAdjust);
-router.post('/total-adjusted-fertilizers', auditLog('POST_ZONE_TOTAL_ADJUSTED'), (req, res, next) => {
-  req.params.level = 'zone';
-  postTotalAdjusted(req, res, next);
-});
-router.put('/adjust/:id', auditLog('EDIT_ZONE_ADJUSTMENT'), (req, res, next) => {
-  req.params.level = 'zone';
-  editAdjustment(req, res, next);
-});
+router.post('/total-adjusted-fertilizers', auditLog('POST_ZONE_TOTAL_ADJUSTED'), postTotalAdjusted);
+router.put('/adjust/:id', auditLog('EDIT_ZONE_ADJUSTMENT'), editAdjustment);
 
 export default router;
