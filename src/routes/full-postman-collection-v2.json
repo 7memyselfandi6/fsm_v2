@@ -6,53 +6,6 @@
   },
   "item": [
     {
-      "name": "00. Adjustments",
-      "item": [
-        {
-          "name": "Federal Level Adjustment",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"parentId\": \"FEDERAL_ID\",\n  \"totalAmount\": 1000000,\n  \"distributions\": [\n    { \"id\": \"REGION_1_ID\", \"amount\": 600000 },\n    { \"id\": \"REGION_2_ID\", \"amount\": 400000 }\n  ],\n  \"reason\": \"Federal initial allocation\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/adjustments/federal", "host": ["{{baseUrl}}"], "path": ["api", "adjustments", "federal"] }
-          }
-        },
-        {
-          "name": "Toggle Global Lock",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"isActive\": true\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/adjustments/toggle-lock", "host": ["{{baseUrl}}"], "path": ["api", "adjustments", "toggle-lock"] }
-          }
-        },
-        {
-          "name": "Region Level Adjustment",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"parentId\": \"REGION_ID\",\n  \"totalAmount\": 600000,\n  \"distributions\": [\n    { \"id\": \"ZONE_1_ID\", \"amount\": 350000 },\n    { \"id\": \"ZONE_2_ID\", \"amount\": 250000 }\n  ],\n  \"reason\": \"Regional allocation based on need\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/adjustments/region", "host": ["{{baseUrl}}"], "path": ["api", "adjustments", "region"] }
-          }
-        }
-      ]
-    },
-    {
       "name": "01. Authentication",
       "item": [
         {
