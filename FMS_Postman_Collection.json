@@ -1,0 +1,646 @@
+{
+  "info": {
+    "_postman_id": "fms-digital-tracking-system",
+    "name": "FMS Digital Tracking System API",
+    "description": "Comprehensive Postman collection for the Ethiopian Fertilizer Digital Tracking & Management System API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.environment.set(\"token\", jsonData.token);",
+                  "}",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin_sa\",\n    \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "value": "Test User",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "testuser",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "test@fms.gov.et",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Password123!",
+                  "type": "text"
+                },
+                {
+                  "key": "role",
+                  "value": "KEBELE_MANAGER",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "0912345678",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Updated Name\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Farmers",
+      "item": [
+        {
+          "name": "Register Farmer",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "value": "Farmer Name",
+                  "type": "text"
+                },
+                {
+                  "key": "gender",
+                  "value": "MALE",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "0911223344",
+                  "type": "text"
+                },
+                {
+                  "key": "kebeleId",
+                  "value": "{{kebeleId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "farmAreaHectares",
+                  "value": "2.5",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farmers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "farmers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Farmer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/farmers/search/:uniqueFarmerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "farmers",
+                "search",
+                ":uniqueFarmerId"
+              ],
+              "variable": [
+                {
+                  "key": "uniqueFarmerId",
+                  "value": "FARM-123456"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Farmers by Kebele",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/farmers/kebele/:kebeleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "farmers",
+                "kebele",
+                ":kebeleId"
+              ],
+              "variable": [
+                {
+                  "key": "kebeleId",
+                  "value": "{{kebeleId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Demands",
+      "item": [
+        {
+          "name": "Submit Demand (Public)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"uniqueFarmerId\": \"FARM-123456\",\n    \"seasonName\": \"Meher 2025\",\n    \"cropTypeIds\": [\"uuid-1\", \"uuid-2\"],\n    \"fertilizers\": [\n        {\n            \"fertilizerTypeId\": \"uuid-urea\",\n            \"quantity\": 2.0\n        }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/demands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/dashboard-summary?seasonName=Meher 2025",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "dashboard-summary"
+              ],
+              "query": [
+                {
+                  "key": "seasonName",
+                  "value": "Meher 2025"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Hierarchical Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{fertilizerTypeId}}&adminId={{adminId}}&userLevel=REGION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{fertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{adminId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "REGION"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Demand Data (Bulk)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fertilizerTypeId\": \"{{fertilizerTypeId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "generate"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Supply & Logistics",
+      "item": [
+        {
+          "name": "Get Shipping Lots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/supply/lots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "supply",
+                "lots"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Sale",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"farmerId\": \"{{farmerId}}\",\n    \"fertilizerTypeId\": \"{{fertilizerTypeId}}\",\n    \"quantity\": 1.5,\n    \"totalPrice\": 4500,\n    \"paymentMethod\": \"CASH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/supply/sales/initiate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "supply",
+                "sales",
+                "initiate"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Geo & Administrative",
+      "item": [
+        {
+          "name": "Get Regions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/region",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "region"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Zones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/zone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "zone"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Woredas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/woreda",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "woreda"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Federal (MOA)",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/federal/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "federal",
+                "dashboard"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Master Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/federal/master-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "federal",
+                "master-data"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Warehouses",
+      "item": [
+        {
+          "name": "Get Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "warehouses"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subsidy",
+      "item": [
+        {
+          "name": "Get Subsidies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/subsidy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subsidy"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "pm.test(\"Response time is less than 500ms\", function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(500);",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ]
+}

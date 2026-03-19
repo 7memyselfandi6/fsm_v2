@@ -15,6 +15,8 @@ import {
   woredaAdjust,
   getZoneSummary,
   getZoneAdjustmentTable,
+  getHierarchicalSummary,
+  generateDemands,
   updateDemand,
   deleteDemand,
 } from '../controllers/demand.controller.js';
@@ -96,6 +98,34 @@ router.put(
     'SUPER_ADMIN',
   ]),
   adjustFarmerDemand
+);
+
+// Hierarchical Summary
+router.get(
+  '/summary',
+  auditLog('FETCH_HIERARCHICAL_SUMMARY'),
+  authorizeRole([
+    'KEBELE_DA',
+    'KEBELE_MANAGER',
+    'WOREDA_EXPERT',
+    'WOREDA_MANAGER',
+    'ZONE_EXPERT',
+    'ZONE_MANAGER',
+    'REGION_EXPERT',
+    'REGION_MANAGER',
+    'MOA_EXPERT',
+    'MOA_MANAGER',
+    'SUPER_ADMIN',
+  ]),
+  getHierarchicalSummary
+);
+
+// Demand Generation
+router.post(
+  '/generate',
+  auditLog('GENERATE_DEMAND_DATA'),
+  authorizeRole(['SUPER_ADMIN', 'MOA_MANAGER']),
+  generateDemands
 );
 
 // Row Actions (Edit/Delete)

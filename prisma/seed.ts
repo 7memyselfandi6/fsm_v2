@@ -122,6 +122,7 @@ async function main() {
       const region = await prisma.region.create({
         data: {
           name: regionName,
+          federalId: federal.id,
           code: `CODE-${i}-${Math.random().toString(36).substring(7)}`,
           status: true,
           isLocked: false,

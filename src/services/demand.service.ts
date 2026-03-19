@@ -1,6 +1,6 @@
 import prisma from '../config/prisma.js';
-import type { DemandsResponse, DemandSummary, Kebele, FertilizerBreakdown, Pagination, DashboardSummaryOutput } from '../types/demand.js';
-import { Prisma, DemandStatus, LockingLevel, Role } from '@prisma/client';
+import type { DemandsResponse, DemandSummary, Kebele, FertilizerBreakdown, Pagination, DashboardSummaryOutput, HierarchicalSummary } from '../types/demand.js';
+import { Prisma, DemandStatus, LockingLevel, Role, DemandPriority } from '@prisma/client';
 import { AuthenticatedUser } from '../types/express.js';
 
 /** --- SHARED HELPERS --- **/
@@ -1208,5 +1208,273 @@ export const updateFarmerDemand = async (id: string, data: any) => {
     where: { id },
     data
   });
+};
+
+/** --- HIERARCHICAL SUMMARY MODULE --- **/
+
+export const getHierarchicalDemandSummary = async (
+  fertilizerTypeId: string,
+  adminId: string,
+  userLevel: 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE'
+): Promise<HierarchicalSummary | null> => {
+  const includeDemands = {
+    where: { fertilizerTypeId },
+    select: { originalQuantity: true }
+  };
+
+  const recursiveInclude = (level: string): any => {
+    switch (level) {
+      case 'FEDERAL':
+        return {
+          regions: {
+            include: recursiveInclude('REGION')
+          }
+        };
+      case 'REGION':
+        return {
+          zones: {
+            include: recursiveInclude('ZONE')
+          }
+        };
+      case 'ZONE':
+        return {
+          woredas: {
+            include: recursiveInclude('WOREDA')
+          }
+        };
+      case 'WOREDA':
+        return {
+          kebeles: {
+            include: recursiveInclude('KEBELE')
+          }
+        };
+      case 'KEBELE':
+        return {
+          farmers: {
+            include: {
+              demands: includeDemands
+            }
+          }
+        };
+      default:
+        return {};
+    }
+  };
+
+  let rootNode: any = null;
+
+  switch (userLevel) {
+    case 'FEDERAL':
+      rootNode = await prisma.federal.findUnique({
+        where: { id: adminId },
+        include: recursiveInclude('FEDERAL')
+      });
+      break;
+    case 'REGION':
+      rootNode = await prisma.region.findUnique({
+        where: { id: adminId },
+        include: recursiveInclude('REGION')
+      });
+      break;
+    case 'ZONE':
+      rootNode = await prisma.zone.findUnique({
+        where: { id: adminId },
+        include: recursiveInclude('ZONE')
+      });
+      break;
+    case 'WOREDA':
+      rootNode = await prisma.woreda.findUnique({
+        where: { id: adminId },
+        include: recursiveInclude('WOREDA')
+      });
+      break;
+    case 'KEBELE':
+      rootNode = await prisma.kebele.findUnique({
+        where: { id: adminId },
+        include: recursiveInclude('KEBELE')
+      });
+      break;
+  }
+
+  if (!rootNode) return null;
+
+  const formatNode = (node: any, level: string): HierarchicalSummary | null => {
+    let totalDemand = 0;
+    const result: any = {};
+
+    const nameMappings: Record<string, string> = {
+      FEDERAL: 'federalName',
+      REGION: 'regionName',
+      ZONE: 'zoneName',
+      WOREDA: 'woredaName',
+      KEBELE: 'kebeleName'
+    };
+
+    const childMappings: Record<string, { key: string, nextLevel: string }> = {
+      FEDERAL: { key: 'regions', nextLevel: 'REGION' },
+      REGION: { key: 'zones', nextLevel: 'ZONE' },
+      ZONE: { key: 'woredas', nextLevel: 'WOREDA' },
+      WOREDA: { key: 'kebeles', nextLevel: 'KEBELE' }
+    };
+
+    result[nameMappings[level]] = node.name;
+
+    if (level === 'KEBELE') {
+      totalDemand = node.farmers.reduce((sum: number, farmer: any) => {
+        return sum + farmer.demands.reduce((dSum: number, d: any) => dSum + d.originalQuantity, 0);
+      }, 0);
+    } else {
+      const mapping = childMappings[level];
+      const children = node[mapping.key] || [];
+      const formattedChildren = children
+        .map((child: any) => formatNode(child, mapping.nextLevel))
+        .filter((child: any) => child !== null && child.totalDemand > 0);
+
+      if (formattedChildren.length > 0) {
+        result[mapping.key] = formattedChildren;
+        totalDemand = formattedChildren.reduce((sum: number, child: any) => sum + child.totalDemand, 0);
+      }
+    }
+
+    if (totalDemand === 0) return null;
+
+  result.totalDemand = Number(totalDemand.toFixed(2));
+  return result;
+};
+
+  return formatNode(rootNode, userLevel);
+};
+
+/** --- DEMAND GENERATION MODULE --- **/
+
+export const generateDemands = async (fertilizerTypeId: string) => {
+  // 1. Validation
+  const fertilizerType = await prisma.fertilizerType.findUnique({
+    where: { id: fertilizerTypeId }
+  });
+  if (!fertilizerType) throw new Error(`Invalid fertilizerTypeId: ${fertilizerTypeId}`);
+
+  const farmers = await prisma.farmer.findMany({ take: 50 }); // Take a sample for generation
+  const cropTypes = await prisma.cropType.findMany({ take: 10 });
+  const seasons = await prisma.season.findMany({ orderBy: { createdAt: 'desc' }, take: 4 });
+
+  if (farmers.length === 0 || cropTypes.length === 0 || seasons.length === 0) {
+    throw new Error('Insufficient master data (farmers, crop types, or seasons) to generate demands.');
+  }
+
+  const priorities = Object.values(DemandPriority);
+  const recurrences = ['WEEKLY', 'MONTHLY', 'QUARTERLY'];
+  const statuses = [DemandStatus.PENDING, DemandStatus.APPROVED];
+
+  let createdCount = 0;
+  let skippedCount = 0;
+  const characteristics: Record<string, number> = {
+    LOW: 0,
+    MEDIUM: 0,
+    HIGH: 0,
+    CRITICAL: 0,
+    WEEKLY: 0,
+    MONTHLY: 0,
+    QUARTERLY: 0
+  };
+
+  const now = new Date();
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(now.getMonth() - 12);
+
+  const demandsToCreate: Prisma.FarmerDemandCreateManyInput[] = [];
+
+  for (const farmer of farmers) {
+    // Generate 3-7 demands per farmer for variety
+    const demandCount = Math.floor(Math.random() * 5) + 3;
+
+    for (let i = 0; i < demandCount; i++) {
+      const season = seasons[Math.floor(Math.random() * seasons.length)];
+      const cropType = cropTypes[Math.floor(Math.random() * cropTypes.length)];
+      const priority = priorities[Math.floor(Math.random() * priorities.length)];
+      const recurrence = recurrences[Math.floor(Math.random() * recurrences.length)];
+      
+      // Determine quantity based on priority
+      let originalQuantity = 0;
+      switch (priority) {
+        case 'LOW': originalQuantity = Math.random() * 5 + 1; break;
+        case 'MEDIUM': originalQuantity = Math.random() * 10 + 5; break;
+        case 'HIGH': originalQuantity = Math.random() * 20 + 15; break;
+        case 'CRITICAL': originalQuantity = Math.random() * 50 + 35; break;
+      }
+
+      // Random target date within last 12 months
+      const targetDate = new Date(twelveMonthsAgo.getTime() + Math.random() * (now.getTime() - twelveMonthsAgo.getTime()));
+
+      // Simplified duplicate check for bulk generation: 
+      // In a real scenario, we might use a unique constraint in DB, 
+      // but here we check against our current list and DB.
+      const isDuplicate = demandsToCreate.some(d => 
+        d.farmerId === farmer.id && 
+        d.seasonId === season.id && 
+        d.fertilizerTypeId === fertilizerTypeId &&
+        d.cropTypeId === cropType.id
+      );
+
+      if (isDuplicate) {
+        skippedCount++;
+        continue;
+      }
+
+      demandsToCreate.push({
+        farmerId: farmer.id,
+        seasonId: season.id,
+        cropTypeId: cropType.id,
+        fertilizerTypeId,
+        originalQuantity: Number(originalQuantity.toFixed(2)),
+        priority,
+        recurrence,
+        targetDate,
+        status: statuses[Math.floor(Math.random() * statuses.length)],
+        lockedAtLevel: LockingLevel.NONE
+      });
+
+      characteristics[priority]++;
+      characteristics[recurrence]++;
+    }
+  }
+
+  // Final check against DB for duplicates before bulk create
+  // To avoid performance issues with large datasets, we do this carefully.
+  const finalDemands: Prisma.FarmerDemandCreateManyInput[] = [];
+  for (const d of demandsToCreate) {
+    const existing = await prisma.farmerDemand.findFirst({
+      where: {
+        farmerId: d.farmerId,
+        seasonId: d.seasonId,
+        fertilizerTypeId: d.fertilizerTypeId,
+        cropTypeId: d.cropTypeId
+      }
+    });
+
+    if (existing) {
+      skippedCount++;
+    } else {
+      finalDemands.push(d);
+      createdCount++;
+    }
+  }
+
+  if (finalDemands.length > 0) {
+    await prisma.farmerDemand.createMany({
+      data: finalDemands,
+      skipDuplicates: true
+    });
+  }
+
+  return {
+    message: 'Demand generation completed successfully',
+    summary: {
+      totalCreated: createdCount,
+      totalSkipped: skippedCount,
+      fertilizerType: fertilizerType.name,
+      characteristics
+    }
+  };
 };
 

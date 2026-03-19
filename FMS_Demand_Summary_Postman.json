@@ -1,0 +1,365 @@
+{
+  "info": {
+    "_postman_id": "fms-demand-summary-tests",
+    "name": "FMS Demand Summary Validation Tests",
+    "description": "Postman collection for testing the Demand Summary endpoint with various parameter combinations and edge cases.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Success Scenarios",
+      "item": [
+        {
+          "name": "Valid Request - Federal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&adminId={{validFederalId}}&userLevel=FEDERAL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{validFederalId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "FEDERAL"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Valid Request - Region",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&adminId={{validRegionId}}&userLevel=REGION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{validRegionId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "REGION"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Missing Parameter Errors",
+      "item": [
+        {
+          "name": "Missing All Parameters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Missing adminId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&userLevel=REGION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "REGION"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Missing userLevel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&adminId={{validRegionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{validRegionId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Format & Validation Errors",
+      "item": [
+        {
+          "name": "Invalid fertilizerTypeId UUID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId=invalid-uuid&adminId={{validRegionId}}&userLevel=REGION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "invalid-uuid"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{validRegionId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "REGION"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid adminId UUID (Non-Federal)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&adminId=invalid-uuid&userLevel=REGION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "invalid-uuid"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "REGION"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid userLevel Value",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&adminId={{validRegionId}}&userLevel=INVALID_LEVEL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{validRegionId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "INVALID_LEVEL"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edge Cases",
+      "item": [
+        {
+          "name": "Empty String Parameters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId=&adminId=&userLevel=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": ""
+                },
+                {
+                  "key": "adminId",
+                  "value": ""
+                },
+                {
+                  "key": "userLevel",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Wrong HTTP Method (POST)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/demands/summary?fertilizerTypeId={{validFertilizerTypeId}}&adminId={{validRegionId}}&userLevel=REGION",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "demands",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{validFertilizerTypeId}}"
+                },
+                {
+                  "key": "adminId",
+                  "value": "{{validRegionId}}"
+                },
+                {
+                  "key": "userLevel",
+                  "value": "REGION"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "if (pm.request.name.includes('Success')) {",
+          "    pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+          "} else {",
+          "    pm.test(\"Status code is 4xx\", function () { pm.expect(pm.response.code).to.be.within(400, 499); });",
+          "}",
+          "pm.test(\"Response time is less than 500ms\", function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(500);",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ]
+}

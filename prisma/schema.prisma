@@ -13,11 +13,14 @@ model Federal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isLocked  Boolean  @default(false)
+
+  regions Region[]
 }
 
 model Region {
   id           String              @id @default(uuid())
   name         String              @unique
+  federalId    String?              
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   code         String?             @unique
@@ -30,6 +33,7 @@ model Region {
   users        User[]
   warehouses   Warehouse[]
   zones        Zone[]
+  federal      Federal?    @relation(fields: [federalId], references: [id])
 }
 
 model Zone {
@@ -274,6 +278,9 @@ model FarmerDemand {
   woredaAdjustedQuantity Float?
   zoneAdjustedQuantity   Float?
   status                 DemandStatus   @default(PENDING)
+  priority               DemandPriority @default(MEDIUM)
+  recurrence             String?        @default("NONE")
+  targetDate             DateTime?      @default(now())
   cropType               CropType       @relation(fields: [cropTypeId], references: [id])
   farmer                 Farmer         @relation(fields: [farmerId], references: [id])
   fertilizerType         FertilizerType @relation(fields: [fertilizerTypeId], references: [id])
@@ -457,6 +464,13 @@ enum MoaLeadExecutive {
   AGRICULTURE_AND_INVESTMENT_LE
   URBAN_LE
   COTTON_LE
+}
+
+enum DemandPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum DemandStatus {

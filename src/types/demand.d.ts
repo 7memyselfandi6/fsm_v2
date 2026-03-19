@@ -54,3 +54,16 @@ export interface Pagination {
   totalItems: number;
   totalPages: number;
 }
+
+export interface HierarchicalSummary {
+  totalDemand: number;
+  federalName?: string;
+  regionName?: string;
+  zoneName?: string;
+  woredaName?: string;
+  kebeleName?: string;
+  regions?: HierarchicalSummary[];
+  zones?: HierarchicalSummary[];
+  woredas?: HierarchicalSummary[];
+  kebeles?: HierarchicalSummary[];
+}

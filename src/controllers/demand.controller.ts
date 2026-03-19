@@ -133,7 +133,11 @@ export const getDetailList = asyncHandler(async (req: Request, res: Response) =>
       zoneId: user.zoneId,
       woredaId: user.woredaId,
       kebeleId: user.kebeleId,
-      role: user.role
+      role: user.role,
+      id: '',
+      fullName: '',
+      username: '',
+      email: ''
     }
   );
 
@@ -165,7 +169,11 @@ export const getWoredaDetailList = asyncHandler(async (req: Request, res: Respon
     {
       woredaId: user.woredaId,
       regionId: user.regionId,
-      role: user.role
+      role: user.role,
+      id: '',
+      fullName: '',
+      username: '',
+      email: ''
     }
   );
 
@@ -250,6 +258,86 @@ export const updateDemand = asyncHandler(async (req: Request, res: Response) => 
   });
 
   res.json(updatedDemand);
+});
+
+// @desc    Get hierarchical demand summary
+// @route   GET /api/demands/summary
+export const getHierarchicalSummary = asyncHandler(async (req: Request, res: Response) => {
+  const { fertilizerTypeId, adminId, userLevel } = req.query;
+
+  console.log(`[DEBUG] Summary Request | URL: ${req.originalUrl} | Query:`, req.query);
+
+  const missingParams = [];
+  if (!fertilizerTypeId) missingParams.push('fertilizerTypeId');
+  if (!adminId) missingParams.push('adminId');
+  if (!userLevel) missingParams.push('userLevel');
+
+  if (missingParams.length > 0) {
+    res.status(400);
+    throw new Error(`Missing required query parameters: ${missingParams.join(', ')}`);
+  }
+
+  // UUID Validation
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  if (!uuidRegex.test(fertilizerTypeId as string)) {
+    res.status(400);
+    throw new Error('Invalid fertilizerTypeId format. Must be a valid UUID.');
+  }
+
+  if (userLevel !== 'FEDERAL' && !uuidRegex.test(adminId as string)) {
+    res.status(400);
+    throw new Error('Invalid adminId format. Must be a valid UUID for the selected userLevel.');
+  }
+
+  const validLevels = ['FEDERAL', 'REGION', 'ZONE', 'WOREDA', 'KEBELE'];
+  if (!validLevels.includes(userLevel as string)) {
+    res.status(400);
+    throw new Error(`Invalid userLevel '${userLevel}'. Must be one of: ${validLevels.join(', ')}`);
+  }
+
+  const result = await demandService.getHierarchicalDemandSummary(
+    fertilizerTypeId as string,
+    adminId as string,
+    userLevel as 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE'
+  );
+
+  if (!result) {
+    // Check if the ID even exists to provide a better error
+    const modelMap: Record<string, any> = {
+      FEDERAL: prisma.federal,
+      REGION: prisma.region,
+      ZONE: prisma.zone,
+      WOREDA: prisma.woreda,
+      KEBELE: prisma.kebele
+    };
+
+    const exists = await modelMap[userLevel as string].findUnique({ where: { id: adminId as string } });
+    
+    if (!exists) {
+      res.status(404);
+      throw new Error(`Admin unit with ID '${adminId}' for level '${userLevel}' not found in database.`);
+    }
+
+    res.status(404);
+    throw new Error(`No demand found for fertilizer type '${fertilizerTypeId}' at the specified ${userLevel} hierarchy.`);
+  }
+
+  res.json(result);
+});
+
+// @desc    Generate comprehensive demand data
+// @route   POST /api/demands/generate
+export const generateDemands = asyncHandler(async (req: Request, res: Response) => {
+  const { fertilizerTypeId } = req.body;
+
+  if (!fertilizerTypeId) {
+    res.status(400);
+    throw new Error('Missing required field: fertilizerTypeId');
+  }
+
+  const result = await demandService.generateDemands(fertilizerTypeId);
+  res.status(201).json(result);
 });
 
 // @desc    Delete a demand (Only if PENDING)
