@@ -5,10 +5,6 @@ import { parseQueryParams, buildPrismaQuery, getPaginationMetadata } from '../ut
 import prisma from '../config/prisma.js';
 import { LockingLevel } from '@prisma/client';
 
-/**
- * @desc    Submit total adjusted fertilizers for a level
- * @route   POST /api/:level/total-adjusted-fertilizers
- */
 export const postTotalAdjusted = asyncHandler(async (req: Request, res: Response) => {
   const { level } = req.params;
   const { parentId, totalAmount, distributions, reason } = req.body;
@@ -44,10 +40,6 @@ export const postTotalAdjusted = asyncHandler(async (req: Request, res: Response
   res.status(201).json({ success: true, data: result });
 });
 
-/**
- * @desc    Edit existing adjustment
- * @route   PUT /api/:level/adjust/:id
- */
 export const editAdjustment = asyncHandler(async (req: Request, res: Response) => {
   const { level, id } = req.params;
   const { totalAmount, distributions, reason } = req.body;
@@ -75,10 +67,6 @@ export const editAdjustment = asyncHandler(async (req: Request, res: Response) =
   res.json({ success: true, data: result });
 });
 
-/**
- * @desc    Enhanced dashboard summary with pagination, filter, search
- * @route   GET /api/:level/dashboard-summary
- */
 export const getEnhancedDashboard = (modelName: string, searchFields: string[] = []) => 
   asyncHandler(async (req: Request, res: Response) => {
     const params = parseQueryParams(req.query);
@@ -87,13 +75,22 @@ export const getEnhancedDashboard = (modelName: string, searchFields: string[] =
     const model = (prisma as any)[modelName];
     if (!model) throw new Error(`Model ${modelName} not found`);
 
+    const includeRelations: any = {};
+    if (modelName === 'region') includeRelations.zones = true;
+    if (modelName === 'zone') includeRelations.woredas = true;
+    if (modelName === 'woreda') includeRelations.kebeles = true;
+    if (modelName === 'kebele') includeRelations.farmers = true;
+
+    const findManyArgs: any = {
+      ...prismaQuery,
+    };
+
+    if (Object.keys(includeRelations).length > 0) {
+      findManyArgs.include = { _count: { select: includeRelations } };
+    }
+
     const [records, totalCount] = await Promise.all([
-      model.findMany({
-        ...prismaQuery,
-        include: {
-          _count: true
-        }
-      }),
+      model.findMany(findManyArgs),
       model.count({ where: prismaQuery.where })
     ]);
 
@@ -104,15 +101,10 @@ export const getEnhancedDashboard = (modelName: string, searchFields: string[] =
     });
 });
 
-/**
- * @desc    Get adjustment history with pagination/filtering
- * @route   GET /api/:level/adjust
- */
 export const getAdjustmentHistory = asyncHandler(async (req: Request, res: Response) => {
   const { level } = req.params;
   const params = parseQueryParams(req.query);
   
-  // Add level filter automatically
   const levelMap: Record<string, LockingLevel> = {
     federal: LockingLevel.MOA,
     region: LockingLevel.REGION,
