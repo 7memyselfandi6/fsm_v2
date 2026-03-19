@@ -27,7 +27,7 @@ export const postTotalAdjusted = asyncHandler(async (req: Request, res: Response
     kebele: LockingLevel.KEBELE
   };
 
-  const lockingLevel = levelMap[level.toLowerCase()];
+  const lockingLevel = levelMap[typeof level === 'string' ? level.toLowerCase() : level[0].toLowerCase()];
   if (!lockingLevel) {
     res.status(400);
     throw new Error('Invalid administrative level');
@@ -62,11 +62,11 @@ export const editAdjustment = asyncHandler(async (req: Request, res: Response) =
     kebele: LockingLevel.KEBELE
   };
 
-  const lockingLevel = levelMap[level.toLowerCase()];
+  const lockingLevel = levelMap[typeof level === 'string' ? level.toLowerCase() : level[0].toLowerCase()];
   
   const result = await adjustmentService.adjustDemand(
     lockingLevel,
-    id, // parentId is the entity being adjusted
+    Array.isArray(id) ? id[0] : id, // parentId is the entity being adjusted
     totalAmount,
     distributions,
     req.user.id,
