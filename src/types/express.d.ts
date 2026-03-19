@@ -1,11 +1,7 @@
 import { Request } from 'express';
 import { Role } from '@prisma/client';
 
-export interface AuthenticatedUser {
-  id: string;
-  fullName: string;
-  username: string;
-  email: string;
+export interface ScopingUser {
   role: Role;
   regionId?: string;
   zoneId?: string;
@@ -13,6 +9,13 @@ export interface AuthenticatedUser {
   kebeleId?: string;
   pcId?: string;
   unionId?: string;
+}
+
+export interface AuthenticatedUser extends ScopingUser {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
 }
 
 declare global {

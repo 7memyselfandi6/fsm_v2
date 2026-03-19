@@ -463,6 +463,55 @@
       ]
     },
     {
+      "name": "Fertilizers",
+      "item": [
+        {
+          "name": "Get All Fertilizer Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-types"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Fertilizer (UREA/DAP only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-types/search?fertilizerTypeId={{fertilizerTypeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-types",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "fertilizerTypeId",
+                  "value": "{{fertilizerTypeId}}",
+                  "description": "Must be ID for UREA or DAP"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Geo & Administrative",
       "item": [
         {

@@ -133,11 +133,7 @@ export const getDetailList = asyncHandler(async (req: Request, res: Response) =>
       zoneId: user.zoneId,
       woredaId: user.woredaId,
       kebeleId: user.kebeleId,
-      role: user.role,
-      id: '',
-      fullName: '',
-      username: '',
-      email: ''
+      role: user.role
     }
   );
 
@@ -169,11 +165,7 @@ export const getWoredaDetailList = asyncHandler(async (req: Request, res: Respon
     {
       woredaId: user.woredaId,
       regionId: user.regionId,
-      role: user.role,
-      id: '',
-      fullName: '',
-      username: '',
-      email: ''
+      role: user.role
     }
   );
 

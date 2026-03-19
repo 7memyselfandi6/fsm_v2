@@ -1,4 +1,4 @@
-import prisma from '../config/prisma.ts';
+import prisma from '../config/prisma.js';
 import { AuthenticatedUser } from '../types/express.js';
 import { Role } from '@prisma/client';
 
@@ -27,7 +27,9 @@ export const getKebelesByFertilizerTypeAndScope = async (
     case Role.REGION_MANAGER:
       whereClause = { ...whereClause, farmer: { kebele: { woreda: { zone: { regionId: user.regionId } } } } };
       break;
-    case Role.FEDERAL: // Assuming 'FEDERAL' role exists or will exist for top-level access
+    case Role.MOA_EXPERT:
+    case Role.MOA_MANAGER:
+
     case Role.SUPER_ADMIN:
       // No additional scope filtering needed for Federal or Super Admin
       break;
@@ -213,6 +215,38 @@ export const getRegionsByFertilizerTypeAndScope = async (
   });
 
   return Array.from(regionsMap.values());
+};
+
+export const searchFertilizer = async (fertilizerTypeId: string) => {
+  const validFertilizers = await prisma.fertilizerType.findMany({
+    where: {
+      name: { in: ['UREA', 'DAP'] }
+    }
+  });
+
+  const validIds = validFertilizers.map(f => f.id);
+  const urea = validFertilizers.find(f => f.name === 'UREA');
+  const dap = validFertilizers.find(f => f.name === 'DAP');
+
+  if (!validIds.includes(fertilizerTypeId)) {
+    throw new Error('Invalid fertilizer type. Only UREA and DAP are supported for search.');
+  }
+
+  const fertilizer = await prisma.fertilizerType.findUnique({
+    where: { id: fertilizerTypeId },
+    include: {
+      _count: {
+        select: {
+          demands: true,
+          sales: true,
+          inventory: true,
+          shippingLots: true,
+        }
+      }
+    }
+  });
+
+  return fertilizer;
 };
 
 export const getFederalByFertilizerTypeAndScope = async (

@@ -1,7 +1,7 @@
 import prisma from '../config/prisma.js';
 import type { DemandsResponse, DemandSummary, Kebele, FertilizerBreakdown, Pagination, DashboardSummaryOutput, HierarchicalSummary } from '../types/demand.js';
 import { Prisma, DemandStatus, LockingLevel, Role, DemandPriority } from '@prisma/client';
-import { AuthenticatedUser } from '../types/express.js';
+import { AuthenticatedUser, ScopingUser } from '../types/express.js';
 
 /** --- SHARED HELPERS --- **/
 
@@ -638,7 +638,7 @@ export const zoneLock = async (data: any, user: AuthenticatedUser) => {
 
 /** --- GENERIC LISTS & CRUD --- **/
 
-export const getDemandDetailList = async (params: any, scope: AuthenticatedUser) => {
+export const getDemandDetailList = async (params: any, scope: ScopingUser) => {
   const { q, status, fertilizerType, page = 1, limit = 10, seasonName, kebeleId, woredaId: filterWoredaId } = params;
   const { regionId, zoneId, woredaId: scopeWoredaId, role } = scope;
 

@@ -15,7 +15,8 @@
     "noImplicitAny": false,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "prisma.config.ts", "scripts"]

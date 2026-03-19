@@ -29,6 +29,7 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^22.13.0",
     "@types/pg": "^8.11.11",
+    "@types/uuid": "^10.0.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
@@ -48,6 +49,7 @@
     "swagger-ui-express": "^5.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

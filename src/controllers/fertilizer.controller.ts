@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import prisma from '../config/prisma.js';
+import * as fertilizerService from '../services/fertilizer.service.js';
 import { z } from 'zod';
 
 const fertilizerTypeSchema = z.object({
@@ -26,6 +27,21 @@ export const getFertilizerTypes = asyncHandler(async (req: Request, res: Respons
   });
 
   res.json(fertilizers);
+});
+
+// @desc    Search fertilizer by ID (Restricted to UREA and DAP)
+// @route   GET /api/fertilizer-types/search
+// @access  Public
+export const searchFertilizer = asyncHandler(async (req: Request, res: Response) => {
+  const { fertilizerTypeId } = req.query;
+
+  if (!fertilizerTypeId) {
+    res.status(400);
+    throw new Error('fertilizerTypeId is required for search');
+  }
+
+  const result = await fertilizerService.searchFertilizer(fertilizerTypeId as string);
+  res.json(result);
 });
 
 // @desc    Add new fertilizer type definition
