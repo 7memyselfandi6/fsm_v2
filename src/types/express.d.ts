@@ -1,11 +1,12 @@
 import { Request } from 'express';
+import { Role } from '@prisma/client';
 
-interface AuthenticatedUser {
+export interface AuthenticatedUser {
   id: string;
   fullName: string;
   username: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE';
+  role: Role;
   regionId?: string;
   zoneId?: string;
   woredaId?: string;

@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import type { DemandsResponse, DemandSummary, Kebele, FertilizerBreakdown, Pagination, DashboardSummaryOutput } from '../types/demand.js';
 import { Prisma, DemandStatus, LockingLevel, Role } from '@prisma/client';
+import { AuthenticatedUser } from '../types/express.js';
 
 /** --- SHARED HELPERS --- **/
 
@@ -41,15 +42,15 @@ export const getFertilizerTypes = async () => await prisma.fertilizerType.findMa
 
 /** --- KEBELE MODULE --- **/
 
-export const getKebeleSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
+export const getKebeleSummary = async (user: AuthenticatedUser, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { kebeleId, regionId, role } = user;
   const [kebele, activeSeason, flag] = await Promise.all([
     prisma.kebele.findUnique({ 
-      where: { id: kebeleId },
+      where: { id: kebeleId || '' },
       include: { sections: true }
     }),
     getActiveSeason(seasonName),
-    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+    role === Role.SUPER_ADMIN ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
   if (!activeSeason) {
@@ -99,13 +100,13 @@ export const getKebeleSummary = async (user: any, seasonName?: string): Promise<
   };
 };
 
-export const getKebeleAdjustmentTable = async (user: any, seasonName?: string) => {
+export const getKebeleAdjustmentTable = async (user: AuthenticatedUser, seasonName?: string) => {
   const { kebeleId } = user;
   const activeSeason = await getActiveSeason(seasonName);
   if (!activeSeason) return null;
 
   const demands = await prisma.farmerDemand.findMany({
-    where: { seasonId: activeSeason.id, farmer: { kebeleId } },
+    where: { seasonId: activeSeason.id, farmer: { kebeleId: kebeleId || '' } },
     include: { fertilizerType: true, farmer: { select: { farmAreaHectares: true } } }
   });
 
@@ -142,13 +143,13 @@ export const getKebeleAdjustmentTable = async (user: any, seasonName?: string) =
   };
 };
 
-export const kebeleAdjust = async (data: any, user: any) => {
+export const kebeleAdjust = async (data: any, user: AuthenticatedUser) => {
   const { fertilizerTypeId, quantity } = data;
   const { kebeleId } = user;
 
   const isLocked = await prisma.farmerDemand.findFirst({
     where: { 
-      farmer: { kebeleId }, 
+      farmer: { kebeleId: kebeleId || '' }, 
       fertilizerTypeId, 
       lockedAtLevel: { in: [LockingLevel.KEBELE, LockingLevel.WOREDA, LockingLevel.ZONE, LockingLevel.REGION, LockingLevel.MOA] } 
     }
@@ -157,7 +158,7 @@ export const kebeleAdjust = async (data: any, user: any) => {
   if (isLocked) throw new Error(`Kebele is locked at ${isLocked.lockedAtLevel} level`);
 
   await prisma.farmerDemand.updateMany({
-    where: { farmer: { kebeleId }, fertilizerTypeId },
+    where: { farmer: { kebeleId: kebeleId || '' }, fertilizerTypeId },
     data: { 
       kebeleAdjustedQuantity: quantity, 
       status: DemandStatus.APPROVED, 
@@ -168,13 +169,13 @@ export const kebeleAdjust = async (data: any, user: any) => {
   return { success: true };
 };
 
-export const kebeleLock = async (data: any, user: any) => {
+export const kebeleLock = async (data: any, user: AuthenticatedUser) => {
   const { lock } = data;
   const { kebeleId } = user;
   const level = lock ? LockingLevel.KEBELE : LockingLevel.NONE;
 
   await prisma.farmerDemand.updateMany({
-    where: { farmer: { kebeleId } },
+    where: { farmer: { kebeleId: kebeleId || '' } },
     data: { lockedAtLevel: level }
   });
   return { success: true, level };
@@ -182,18 +183,18 @@ export const kebeleLock = async (data: any, user: any) => {
 
 /** --- WOREDA MODULE --- **/
 
-export const getWoredaSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
+export const getWoredaSummary = async (user: AuthenticatedUser, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { woredaId, regionId, role } = user;
   const [woreda, activeSeason, flag] = await Promise.all([
     prisma.woreda.findUnique({ 
-      where: { id: woredaId },
+      where: { id: woredaId || '' },
       include: { 
         kebeles: true,
         zone: { include: { region: true } }
       }
     }),
     getActiveSeason(seasonName),
-    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+    role === Role.SUPER_ADMIN ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
   if (!activeSeason) {
@@ -247,13 +248,13 @@ export const getWoredaSummary = async (user: any, seasonName?: string): Promise<
   };
 };
 
-export const getWoredaAdjustmentTable = async (user: any, seasonName?: string) => {
+export const getWoredaAdjustmentTable = async (user: AuthenticatedUser, seasonName?: string) => {
   const { woredaId } = user;
   const activeSeason = await getActiveSeason(seasonName);
   if (!activeSeason) return null;
 
   const demands = await prisma.farmerDemand.findMany({
-    where: { seasonId: activeSeason.id, farmer: { kebele: { woredaId } } },
+    where: { seasonId: activeSeason.id, farmer: { kebele: { woredaId: woredaId || '' } } },
     include: { 
       fertilizerType: true, 
       farmer: { 
@@ -326,7 +327,7 @@ export const getWoredaAdjustmentTable = async (user: any, seasonName?: string) =
   };
 };
 
-export const woredaAdjust = async (data: any, user: any) => {
+export const woredaAdjust = async (data: any, user: AuthenticatedUser) => {
   const { fertilizerTypeId, adjustments } = data; // adjustments: [{ kebeleId, quantity }]
   const { woredaId } = user;
 
@@ -334,7 +335,7 @@ export const woredaAdjust = async (data: any, user: any) => {
     for (const adj of adjustments) {
       const isLocked = await tx.farmerDemand.findFirst({
         where: { 
-          farmer: { kebeleId: adj.kebeleId, kebele: { woredaId } }, 
+          farmer: { kebeleId: adj.kebeleId, kebele: { woredaId: woredaId || '' } }, 
           fertilizerTypeId, 
           lockedAtLevel: { in: [LockingLevel.WOREDA, LockingLevel.ZONE, LockingLevel.REGION, LockingLevel.MOA] } 
         }
@@ -342,7 +343,7 @@ export const woredaAdjust = async (data: any, user: any) => {
       if (isLocked) throw new Error(`Kebele ${adj.kebeleId} is locked at ${isLocked.lockedAtLevel} level`);
 
       await tx.farmerDemand.updateMany({
-        where: { farmer: { kebeleId: adj.kebeleId, kebele: { woredaId } }, fertilizerTypeId },
+        where: { farmer: { kebeleId: adj.kebeleId, kebele: { woredaId: woredaId || '' } }, fertilizerTypeId },
         data: { woredaAdjustedQuantity: adj.quantity, status: DemandStatus.APPROVED, lockedAtLevel: LockingLevel.WOREDA }
       });
     }
@@ -350,7 +351,7 @@ export const woredaAdjust = async (data: any, user: any) => {
   });
 };
 
-export const woredaLock = async (data: any, user: any) => {
+export const woredaLock = async (data: any, user: AuthenticatedUser) => {
   const { kebeleId, lock } = data;
   const { woredaId } = user;
   const level = lock ? LockingLevel.WOREDA : LockingLevel.NONE;
@@ -358,7 +359,7 @@ export const woredaLock = async (data: any, user: any) => {
   await prisma.farmerDemand.updateMany({
     where: { 
       farmer: { 
-        kebele: { woredaId },
+        kebele: { woredaId: woredaId || '' },
         ...(kebeleId && { kebeleId })
       } 
     },
@@ -369,11 +370,11 @@ export const woredaLock = async (data: any, user: any) => {
 
 /** --- ZONE MODULE --- **/
 
-export const getZoneSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
+export const getZoneSummary = async (user: AuthenticatedUser, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { zoneId, regionId, role } = user;
   const [zone, activeSeason, flag] = await Promise.all([
     prisma.zone.findUnique({ 
-      where: { id: zoneId },
+      where: { id: zoneId || '' },
       include: { 
         woredas: {
           include: {
@@ -384,7 +385,7 @@ export const getZoneSummary = async (user: any, seasonName?: string): Promise<Da
       }
     }),
     getActiveSeason(seasonName),
-    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId)
+    role === Role.SUPER_ADMIN ? Promise.resolve(null) : getRegionalFlag(regionId)
   ]);
 
   if (!activeSeason) {
@@ -448,11 +449,11 @@ export const getZoneSummary = async (user: any, seasonName?: string): Promise<Da
   };
 };
 
-export const getRegionSummary = async (user: any, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
+export const getRegionSummary = async (user: AuthenticatedUser, seasonName?: string): Promise<DashboardSummaryOutput | null> => {
   const { regionId, role } = user;
   const [region, activeSeason, flag] = await Promise.all([
     prisma.region.findUnique({
-      where: { id: regionId },
+      where: { id: regionId || '' },
       include: {
         zones: {
           include: {
@@ -466,7 +467,7 @@ export const getRegionSummary = async (user: any, seasonName?: string): Promise<
       },
     }),
     getActiveSeason(seasonName),
-    role === 'SUPER_ADMIN' ? Promise.resolve(null) : getRegionalFlag(regionId),
+    role === Role.SUPER_ADMIN ? Promise.resolve(null) : getRegionalFlag(regionId),
   ]);
 
   if (!activeSeason) {
@@ -479,7 +480,7 @@ export const getRegionSummary = async (user: any, seasonName?: string): Promise<
   const demands = await prisma.farmerDemand.findMany({
     where: {
       seasonId: activeSeason.id,
-      farmer: { kebele: { woreda: { zone: { regionId } } } },
+      farmer: { kebele: { woreda: { zone: { regionId: regionId || '' } } } },
     },
     include: {
       fertilizerType: { select: { id: true, name: true } }, // Include fertilizerType ID
