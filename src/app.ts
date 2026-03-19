@@ -28,6 +28,7 @@ import subsidyRoutes from './routes/subsidy.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import financialRoutes from './routes/financial.routes.js';
 import adjustmentRoutes from './routes/adjustment.routes.js';
+import { setupSwagger } from './config/swagger.js';
 
 dotenv.config();
 
@@ -98,6 +99,9 @@ app.use('/api/subsidy', subsidyRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/list', financialRoutes);
 app.use('/api/adjustments', adjustmentRoutes);
+
+// Setup Swagger
+setupSwagger(app);
 
 // Error Handler
 app.use(errorHandler);

@@ -13,6 +13,11 @@ import {
   deleteKebele
 } from '../controllers/kebele.controller.js';
 import {
+  postTotalAdjusted,
+  editAdjustment,
+  getEnhancedDashboard
+} from '../controllers/enhancedDashboard.controller.js';
+import {
   lockKebele,
   bulkLockKebele,
   getKebeleLockStatus
@@ -30,10 +35,13 @@ router.get('/lock-status', auditLog('FETCH_KEBELE_LOCK_STATUS'), getKebeleLockSt
 
 // Dashboard & Adjustments (Scoped to Kebele DA/Manager)
 router.get('/dashboard-summary', auditLog('FETCH_KEBELE_SUMMARY'), getKebeleSummary);
+router.get('/dashboard-enhanced', auditLog('FETCH_KEBELE_DASHBOARD_ENHANCED'), getEnhancedDashboard('kebele', ['name']));
 router.get('/detail-list', auditLog('FETCH_KEBELE_DETAIL_LIST'), getKebeleDetailList);
 router.get('/adjustment-table', auditLog('FETCH_KEBELE_ADJUSTMENT_TABLE'), getKebeleAdjustmentTable);
 router.post('/lock', auditLog('KEBELE_LOCK_DEMAND'), kebeleLock);
 router.post('/adjust', auditLog('KEBELE_ADJUST_DEMAND'), kebeleAdjust);
+router.post('/total-adjusted-fertilizers', auditLog('POST_KEBELE_TOTAL_ADJUSTED'), postTotalAdjusted);
+router.put('/adjust/:id', auditLog('EDIT_KEBELE_ADJUSTMENT'), editAdjustment);
 
 // Entity CRUD (Admin only)
 router.get('/', auditLog('FETCH_KEBELES'), getKebeles);

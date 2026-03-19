@@ -8,6 +8,11 @@ import {
   regionAdjust
 } from '../controllers/region.controller.js';
 import {
+  postTotalAdjusted,
+  editAdjustment,
+  getEnhancedDashboard
+} from '../controllers/enhancedDashboard.controller.js';
+import {
   lockRegion,
   bulkLockRegion,
   getRegionLockStatus
@@ -25,9 +30,12 @@ router.post('/bulk-lock', authorizeRole(['SUPER_ADMIN']), auditLog('REGION_BULK_
 router.get('/lock-status', auditLog('FETCH_REGION_LOCK_STATUS'), getRegionLockStatus);
 
 router.get('/dashboard-summary', auditLog('FETCH_REGION_SUMMARY'), getRegionSummary);
+router.get('/dashboard-enhanced', auditLog('FETCH_REGION_DASHBOARD_ENHANCED'), getEnhancedDashboard('region', ['name', 'code']));
 router.get('/detail-list', auditLog('FETCH_REGION_DETAIL_LIST'), getRegionDetailList);
 router.get('/adjustment-table', auditLog('FETCH_REGION_ADJUSTMENT_TABLE'), getRegionAdjustmentTable);
 router.post('/lock', auditLog('REGION_LOCK_DEMAND'), regionLock);
 router.post('/adjust', auditLog('REGION_ADJUST_DEMAND'), regionAdjust);
+router.post('/total-adjusted-fertilizers', auditLog('POST_REGION_TOTAL_ADJUSTED'), postTotalAdjusted);
+router.put('/adjust/:id', auditLog('EDIT_REGION_ADJUSTMENT'), editAdjustment);
 
 export default router;

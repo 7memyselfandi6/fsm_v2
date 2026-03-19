@@ -8,6 +8,11 @@ import {
   zoneAdjust
 } from '../controllers/zone.controller.js';
 import {
+  postTotalAdjusted,
+  editAdjustment,
+  getEnhancedDashboard
+} from '../controllers/enhancedDashboard.controller.js';
+import {
   lockZone,
   bulkLockZone,
   getZoneLockStatus
@@ -25,9 +30,12 @@ router.post('/bulk-lock', authorizeRole(['REGION_MANAGER', 'SUPER_ADMIN']), audi
 router.get('/lock-status', auditLog('FETCH_ZONE_LOCK_STATUS'), getZoneLockStatus);
 
 router.get('/dashboard-summary', auditLog('FETCH_ZONE_SUMMARY'), getZoneSummary);
+router.get('/dashboard-enhanced', auditLog('FETCH_ZONE_DASHBOARD_ENHANCED'), getEnhancedDashboard('zone', ['name']));
 router.get('/detail-list', auditLog('FETCH_ZONE_DETAIL_LIST'), getZoneDetailList);
 router.get('/adjustment-table', auditLog('FETCH_ZONE_ADJUSTMENT_TABLE'), getZoneAdjustmentTable);
 router.post('/lock', auditLog('ZONE_LOCK_DEMAND'), zoneLock);
 router.post('/adjust', auditLog('ZONE_ADJUST_DEMAND'), zoneAdjust);
+router.post('/total-adjusted-fertilizers', auditLog('POST_ZONE_TOTAL_ADJUSTED'), postTotalAdjusted);
+router.put('/adjust/:id', auditLog('EDIT_ZONE_ADJUSTMENT'), editAdjustment);
 
 export default router;

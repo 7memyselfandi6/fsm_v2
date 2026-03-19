@@ -1,0 +1,223 @@
+[
+  {
+    "role": "SUPER_ADMIN",
+    "registrationPayload": {
+      "fullName": "Super Admin User",
+      "username": "superadmin_custom",
+      "email": "superadmin_custom@fms.gov.et",
+      "phoneNumber": "0910000000",
+      "password": "password123",
+      "role": "SUPER_ADMIN"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000000",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "KEBELE_MANAGER",
+    "registrationPayload": {
+      "fullName": "Kebele Manager User",
+      "username": "kebele_manager_custom",
+      "email": "kebele_manager_custom@fms.gov.et",
+      "phoneNumber": "0910000001",
+      "password": "password123",
+      "role": "KEBELE_MANAGER",
+      "kebeleId": "207f2bfa-d499-45ad-8726-921f1a3fa5a9"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000001",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "KEBELE_DA",
+    "registrationPayload": {
+      "fullName": "Kebele DA User",
+      "username": "kebele_da_custom",
+      "email": "kebele_da_custom@fms.gov.et",
+      "phoneNumber": "0910000011",
+      "password": "password123",
+      "role": "KEBELE_DA",
+      "kebeleId": "207f2bfa-d499-45ad-8726-921f1a3fa5a9"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000011",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "WOREDA_MANAGER",
+    "registrationPayload": {
+      "fullName": "Woreda Manager User",
+      "username": "woreda_manager_custom",
+      "email": "woreda_manager_custom@fms.gov.et",
+      "phoneNumber": "0910000002",
+      "password": "password123",
+      "role": "WOREDA_MANAGER",
+      "woredaId": "e1eb0bc3-0381-4308-b175-e9a869241915"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000002",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "WOREDA_EXPERT",
+    "registrationPayload": {
+      "fullName": "Woreda Expert User",
+      "username": "woreda_expert_custom",
+      "email": "woreda_expert_custom@fms.gov.et",
+      "phoneNumber": "0910000022",
+      "password": "password123",
+      "role": "WOREDA_EXPERT",
+      "woredaId": "e1eb0bc3-0381-4308-b175-e9a869241915"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000022",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "ZONE_MANAGER",
+    "registrationPayload": {
+      "fullName": "Zone Manager User",
+      "username": "zone_manager_custom",
+      "email": "zone_manager_custom@fms.gov.et",
+      "phoneNumber": "0910000003",
+      "password": "password123",
+      "role": "ZONE_MANAGER",
+      "zoneId": "2c24d2e4-2bed-4c6a-b3d4-e4f231b772d6"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000003",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "ZONE_EXPERT",
+    "registrationPayload": {
+      "fullName": "Zone Expert User",
+      "username": "zone_expert_custom",
+      "email": "zone_expert_custom@fms.gov.et",
+      "phoneNumber": "0910000033",
+      "password": "password123",
+      "role": "ZONE_EXPERT",
+      "zoneId": "2c24d2e4-2bed-4c6a-b3d4-e4f231b772d6"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000033",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "REGION_MANAGER",
+    "registrationPayload": {
+      "fullName": "Region Manager User",
+      "username": "region_manager_custom",
+      "email": "region_manager_custom@fms.gov.et",
+      "phoneNumber": "0910000004",
+      "password": "password123",
+      "role": "REGION_MANAGER",
+      "regionId": "4cc1992a-7da3-4e9c-aec9-211544e98bce"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000004",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "REGION_EXPERT",
+    "registrationPayload": {
+      "fullName": "Region Expert User",
+      "username": "region_expert_custom",
+      "email": "region_expert_custom@fms.gov.et",
+      "phoneNumber": "0910000044",
+      "password": "password123",
+      "role": "REGION_EXPERT",
+      "regionId": "4cc1992a-7da3-4e9c-aec9-211544e98bce"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000044",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "MOA_MANAGER",
+    "registrationPayload": {
+      "fullName": "MOA Manager User",
+      "username": "moa_manager_custom",
+      "email": "moa_manager_custom@fms.gov.et",
+      "phoneNumber": "0910000005",
+      "password": "password123",
+      "role": "MOA_MANAGER"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000005",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "MOA_EXPERT",
+    "registrationPayload": {
+      "fullName": "MOA Expert User",
+      "username": "moa_expert_custom",
+      "email": "moa_expert_custom@fms.gov.et",
+      "phoneNumber": "0910000055",
+      "password": "password123",
+      "role": "MOA_EXPERT"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000055",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "PC_ACCOUNTANT",
+    "registrationPayload": {
+      "fullName": "PC Accountant User",
+      "username": "pc_accountant_custom",
+      "email": "pc_accountant_custom@fms.gov.et",
+      "phoneNumber": "0910000006",
+      "password": "password123",
+      "role": "PC_ACCOUNTANT",
+      "pcId": "eea6181e-ba73-4a58-9f54-12868ba65b10"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000006",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "PC_STOREMAN",
+    "registrationPayload": {
+      "fullName": "PC Storeman User",
+      "username": "pc_storeman_custom",
+      "email": "pc_storeman_custom@fms.gov.et",
+      "phoneNumber": "0910000066",
+      "password": "password123",
+      "role": "PC_STOREMAN",
+      "pcId": "eea6181e-ba73-4a58-9f54-12868ba65b10"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000066",
+      "password": "password123"
+    }
+  },
+  {
+    "role": "UNION_MEMBER",
+    "registrationPayload": {
+      "fullName": "Union Member User",
+      "username": "union_member_custom",
+      "email": "union_member_custom@fms.gov.et",
+      "phoneNumber": "0910000007",
+      "password": "password123",
+      "role": "UNION_MEMBER",
+      "unionId": "cf2176bf-7226-4ada-b723-c09c1036c96f"
+    },
+    "loginPayload": {
+      "phoneNumber": "0910000007",
+      "password": "password123"
+    }
+  }
+]
