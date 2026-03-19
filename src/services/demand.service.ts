@@ -529,13 +529,13 @@ export const getRegionSummary = async (user: AuthenticatedUser, seasonName?: str
   };
 };
 
-export const getZoneAdjustmentTable = async (user: any, seasonName?: string) => {
+export const getZoneAdjustmentTable = async (user: AuthenticatedUser, seasonName?: string) => {
   const { zoneId } = user;
   const activeSeason = await getActiveSeason(seasonName);
   if (!activeSeason) return null;
 
   const woredas = await prisma.woreda.findMany({
-    where: { zoneId },
+    where: { zoneId: zoneId || '' },
     include: {
       kebeles: {
         include: {
@@ -582,7 +582,7 @@ export const getZoneAdjustmentTable = async (user: any, seasonName?: string) => 
   });
 
   const lockStatus = await prisma.farmerDemand.findFirst({
-    where: { seasonId: activeSeason.id, farmer: { kebele: { woreda: { zoneId } } }, lockedAtLevel: { in: [LockingLevel.ZONE, LockingLevel.REGION, LockingLevel.MOA] } },
+    where: { seasonId: activeSeason.id, farmer: { kebele: { woreda: { zoneId: zoneId || '' } } }, lockedAtLevel: { in: [LockingLevel.ZONE, LockingLevel.REGION, LockingLevel.MOA] } },
     select: { lockedAtLevel: true }
   });
 
@@ -595,7 +595,7 @@ export const getZoneAdjustmentTable = async (user: any, seasonName?: string) => 
   };
 };
 
-export const zoneAdjust = async (data: any, user: any) => {
+export const zoneAdjust = async (data: any, user: AuthenticatedUser) => {
   const { fertilizerTypeId, adjustments } = data; // adjustments: [{ woredaId, quantity }]
   const { zoneId } = user;
 
@@ -603,7 +603,7 @@ export const zoneAdjust = async (data: any, user: any) => {
     for (const adj of adjustments) {
       const isLocked = await tx.farmerDemand.findFirst({
         where: { 
-          farmer: { kebele: { woreda: { id: adj.woredaId, zoneId } } },
+          farmer: { kebele: { woreda: { id: adj.woredaId, zoneId: zoneId || '' } } },
           fertilizerTypeId, 
           lockedAtLevel: { in: [LockingLevel.ZONE, LockingLevel.REGION, LockingLevel.MOA] } 
         }
@@ -611,7 +611,7 @@ export const zoneAdjust = async (data: any, user: any) => {
       if (isLocked) throw new Error(`Woreda ${adj.woredaId} is locked at ${isLocked.lockedAtLevel} level`);
 
       await tx.farmerDemand.updateMany({
-        where: { farmer: { kebele: { woreda: { id: adj.woredaId, zoneId } } }, fertilizerTypeId },
+        where: { farmer: { kebele: { woreda: { id: adj.woredaId, zoneId: zoneId || '' } } }, fertilizerTypeId },
         data: { zoneAdjustedQuantity: adj.quantity, status: DemandStatus.APPROVED, lockedAtLevel: LockingLevel.ZONE }
       });
     }
@@ -619,7 +619,7 @@ export const zoneAdjust = async (data: any, user: any) => {
   });
 };
 
-export const zoneLock = async (data: any, user: any) => {
+export const zoneLock = async (data: any, user: AuthenticatedUser) => {
   const { woredaId, lock } = data;
   const { zoneId } = user;
   const level = lock ? LockingLevel.ZONE : LockingLevel.NONE;
@@ -627,7 +627,7 @@ export const zoneLock = async (data: any, user: any) => {
   await prisma.farmerDemand.updateMany({
     where: { 
       farmer: { 
-        kebele: { woreda: { zoneId } },
+        kebele: { woreda: { zoneId: zoneId || '' } },
         ...(woredaId && { kebele: { woredaId } })
       } 
     },
@@ -638,7 +638,7 @@ export const zoneLock = async (data: any, user: any) => {
 
 /** --- GENERIC LISTS & CRUD --- **/
 
-export const getDemandDetailList = async (params: any, scope: any) => {
+export const getDemandDetailList = async (params: any, scope: AuthenticatedUser) => {
   const { q, status, fertilizerType, page = 1, limit = 10, seasonName, kebeleId, woredaId: filterWoredaId } = params;
   const { regionId, zoneId, woredaId: scopeWoredaId, role } = scope;
 
@@ -821,13 +821,13 @@ export const mapLotResponse = (l: any) => {
 
 
 
-export const getRegionAdjustmentTable = async (user: any, seasonName?: string) => {
+export const getRegionAdjustmentTable = async (user: AuthenticatedUser, seasonName?: string) => {
   const { regionId } = user;
   const activeSeason = await getActiveSeason(seasonName);
   if (!activeSeason) return null;
 
   const zones = await prisma.zone.findMany({
-    where: { regionId },
+    where: { regionId: regionId || '' },
     include: {
       woredas: {
         include: {
@@ -882,7 +882,7 @@ export const getRegionAdjustmentTable = async (user: any, seasonName?: string) =
   const lockStatus = await prisma.farmerDemand.findFirst({
     where: { 
       seasonId: activeSeason.id, 
-      farmer: { kebele: { woreda: { zone: { regionId } } } }, 
+      farmer: { kebele: { woreda: { zone: { regionId: regionId || '' } } } }, 
       lockedAtLevel: { in: [LockingLevel.REGION, LockingLevel.MOA] } 
     },
     select: { lockedAtLevel: true }
@@ -897,7 +897,7 @@ export const getRegionAdjustmentTable = async (user: any, seasonName?: string) =
   };
 };
 
-export const regionAdjust = async (data: any, user: any) => {
+export const regionAdjust = async (data: any, user: AuthenticatedUser) => {
   const { fertilizerTypeId, adjustments } = data; // adjustments: [{ zoneId, quantity }]
   const { regionId } = user;
 
@@ -905,7 +905,7 @@ export const regionAdjust = async (data: any, user: any) => {
     for (const adj of adjustments) {
       const isLocked = await tx.farmerDemand.findFirst({
         where: { 
-          farmer: { kebele: { woreda: { zone: { id: adj.zoneId, regionId } } } }, 
+          farmer: { kebele: { woreda: { zone: { id: adj.zoneId, regionId: regionId || '' } } } }, 
           fertilizerTypeId, 
           lockedAtLevel: { in: [LockingLevel.REGION, LockingLevel.MOA] } 
         }
@@ -913,7 +913,7 @@ export const regionAdjust = async (data: any, user: any) => {
       if (isLocked) throw new Error(`Zone ${adj.zoneId} is locked at ${isLocked.lockedAtLevel} level`);
 
       await tx.farmerDemand.updateMany({
-        where: { farmer: { kebele: { woreda: { zone: { id: adj.zoneId, regionId } } } }, fertilizerTypeId },
+        where: { farmer: { kebele: { woreda: { zone: { id: adj.zoneId, regionId: regionId || '' } } } }, fertilizerTypeId },
         data: { regionAdjustedQuantity: adj.quantity, status: DemandStatus.APPROVED, lockedAtLevel: LockingLevel.REGION }
       });
     }
@@ -921,7 +921,7 @@ export const regionAdjust = async (data: any, user: any) => {
   });
 };
 
-export const regionLock = async (data: any, user: any) => {
+export const regionLock = async (data: any, user: AuthenticatedUser) => {
   const { zoneId, lock } = data;
   const { regionId } = user;
   const level = lock ? LockingLevel.REGION : LockingLevel.NONE;
@@ -929,7 +929,7 @@ export const regionLock = async (data: any, user: any) => {
   await prisma.farmerDemand.updateMany({
     where: { 
       farmer: {
-        kebele: { woreda: { zone: { regionId } } },
+        kebele: { woreda: { zone: { regionId: regionId || '' } } },
         ...(zoneId && { kebele: { woreda: { zoneId } } })
       } 
     },
@@ -1050,10 +1050,10 @@ export const getFederalDashboard = async (seasonName?: string) => {
   };
 };
 
-export const federalAdjust = async (data: any, user: any) => {
+export const federalAdjust = async (data: any, user: AuthenticatedUser) => {
    const { fertilizerTypeId, adjustments } = data; // adjustments: [{ regionId, quantity }]
    
-   if (!['MOA_MANAGER', 'MOA_EXPERT', 'SUPER_ADMIN'].includes(user.role)) {
+   if (!(user.role === Role.MOA_MANAGER || user.role === Role.MOA_EXPERT || user.role === Role.SUPER_ADMIN)) {
      throw new Error('Unauthorized for federal adjustments');
    }
 
