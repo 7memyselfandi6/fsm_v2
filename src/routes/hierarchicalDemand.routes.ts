@@ -20,4 +20,8 @@ router.get('/zone/:zoneId/:fertilizerType', protect, controller.getZoneDrillDown
 router.get('/woreda/:woredaId', protect, controller.getWoredaSummary);
 router.get('/woreda/:woredaId/:fertilizerType', protect, controller.getWoredaDrillDown);
 
+// Kebele
+router.get('/kebele/:kebeleId', protect, controller.getKebeleSummary);
+router.get('/kebele/:kebeleId/:fertilizerType', protect, controller.getKebeleDrillDown);
+
 export default router;

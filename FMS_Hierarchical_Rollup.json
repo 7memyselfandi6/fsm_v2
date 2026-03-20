@@ -1,0 +1,330 @@
+{
+  "info": {
+    "_postman_id": "fms-hierarchical-analytics",
+    "name": "FMS Hierarchical Analytics",
+    "description": "Specific endpoints for Federal, Region, Zone, and Woreda summary and drill-down analytics. No required query parameters (productionSeason is now optional).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Federal",
+      "item": [
+        {
+          "name": "Federal Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/federal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "federal"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Federal Drill-Down",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/federal/:fertilizerType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "federal",
+                ":fertilizerType"
+              ],
+              "variable": [
+                {
+                  "key": "fertilizerType",
+                  "value": "UREA",
+                  "description": "e.g., UREA or DAP"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Region",
+      "item": [
+        {
+          "name": "Region Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/region/:regionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "region",
+                ":regionId"
+              ],
+              "variable": [
+                {
+                  "key": "regionId",
+                  "value": "{{validRegionId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Region Drill-Down",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/region/:regionId/:fertilizerType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "region",
+                ":regionId",
+                ":fertilizerType"
+              ],
+              "variable": [
+                {
+                  "key": "regionId",
+                  "value": "{{validRegionId}}"
+                },
+                {
+                  "key": "fertilizerType",
+                  "value": "DAP"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zone",
+      "item": [
+        {
+          "name": "Zone Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/zone/:zoneId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "zone",
+                ":zoneId"
+              ],
+              "variable": [
+                {
+                  "key": "zoneId",
+                  "value": "{{validZoneId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Zone Drill-Down",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/zone/:zoneId/:fertilizerType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "zone",
+                ":zoneId",
+                ":fertilizerType"
+              ],
+              "variable": [
+                {
+                  "key": "zoneId",
+                  "value": "{{validZoneId}}"
+                },
+                {
+                  "key": "fertilizerType",
+                  "value": "UREA"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Woreda",
+      "item": [
+        {
+          "name": "Woreda Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/woreda/:woredaId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "woreda",
+                ":woredaId"
+              ],
+              "variable": [
+                {
+                  "key": "woredaId",
+                  "value": "{{validWoredaId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Woreda Drill-Down",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/woreda/:woredaId/:fertilizerType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "woreda",
+                ":woredaId",
+                ":fertilizerType"
+              ],
+              "variable": [
+                {
+                  "key": "woredaId",
+                  "value": "{{validWoredaId}}"
+                },
+                {
+                  "key": "fertilizerType",
+                  "value": "DAP"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Kebele",
+      "item": [
+        {
+          "name": "Kebele Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/kebele/:kebeleId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "kebele",
+                ":kebeleId"
+              ],
+              "variable": [
+                {
+                  "key": "kebeleId",
+                  "value": "{{validKebeleId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Kebele Drill-Down",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/kebele/:kebeleId/:fertilizerType",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fertilizer-demand",
+                "kebele",
+                ":kebeleId",
+                ":fertilizerType"
+              ],
+              "variable": [
+                {
+                  "key": "kebeleId",
+                  "value": "{{validKebeleId}}"
+                },
+                {
+                  "key": "fertilizerType",
+                  "value": "UREA"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+          "pm.test(\"Valid JSON\", function () { pm.response.to.be.json; });"
+        ]
+      }
+    }
+  ]
+}

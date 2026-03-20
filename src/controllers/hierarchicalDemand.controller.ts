@@ -78,3 +78,20 @@ export const getWoredaDrillDown = asyncHandler(async (req: Request, res: Respons
   const drillDown = await hierarchicalService.getWoredaDrillDown(woredaId as string, fertilizerType as string, getParams(req));
   res.json(drillDown);
 });
+
+// 5. Kebele
+export const getKebeleSummary = asyncHandler(async (req: Request, res: Response) => {
+  const { kebeleId } = req.params;
+  const summary = await hierarchicalService.getKebeleSummary(kebeleId as string, getParams(req));
+  if (!summary) {
+    res.status(404);
+    throw new Error('Kebele unit does not exist or has no requests for the selected season.');
+  }
+  res.json(summary);
+});
+
+export const getKebeleDrillDown = asyncHandler(async (req: Request, res: Response) => {
+  const { kebeleId, fertilizerType } = req.params;
+  const drillDown = await hierarchicalService.getKebeleDrillDown(kebeleId as string, fertilizerType as string, getParams(req));
+  res.json(drillDown);
+});

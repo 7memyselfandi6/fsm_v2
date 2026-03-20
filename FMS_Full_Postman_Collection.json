@@ -1,0 +1,347 @@
+{
+  "info": {
+    "_postman_id": "fms-comprehensive-collection",
+    "name": "FMS Digital Tracking System - Full API",
+    "description": "The complete API documentation for the Ethiopian Fertilizer Digital Tracking & Management System. Covers authentication, farmer management, hierarchical demand tracking, supply chain, and administrative controls.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.environment.set(\"token\", jsonData.token);",
+                  "}",
+                  "pm.test(\"Login successful\", function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin_sa\",\n    \"password\": \"Password123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login" }
+          }
+        },
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName", "value": "New Admin", "type": "text" },
+                { "key": "username", "value": "admin_new", "type": "text" },
+                { "key": "email", "value": "admin@fms.gov.et", "type": "text" },
+                { "key": "password", "value": "Password123!", "type": "text" },
+                { "key": "role", "value": "SUPER_ADMIN", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Hierarchical Analytics (Dashboard)",
+      "item": [
+        {
+          "name": "Federal Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/fertilizer-demand/federal?productionSeason={{productionSeason}}",
+              "query": [{ "key": "productionSeason", "value": "{{productionSeason}}" }]
+            }
+          }
+        },
+        {
+          "name": "Federal Drill-Down (UREA)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/federal/UREA?productionSeason={{productionSeason}}" }
+          }
+        },
+        {
+          "name": "Region Summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/region/:regionId?productionSeason={{productionSeason}}", "variable": [{ "key": "regionId", "value": "{{validRegionId}}" }] }
+          }
+        },
+        {
+          "name": "Region Drill-Down (DAP)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/region/:regionId/DAP?productionSeason={{productionSeason}}", "variable": [{ "key": "regionId", "value": "{{validRegionId}}" }] }
+          }
+        },
+        {
+          "name": "Zone Summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/zone/:zoneId?productionSeason={{productionSeason}}", "variable": [{ "key": "zoneId", "value": "{{validZoneId}}" }] }
+          }
+        },
+        {
+          "name": "Zone Drill-Down (UREA)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/zone/:zoneId/UREA?productionSeason={{productionSeason}}", "variable": [{ "key": "zoneId", "value": "{{validZoneId}}" }] }
+          }
+        },
+        {
+          "name": "Woreda Summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/woreda/:woredaId?productionSeason={{productionSeason}}", "variable": [{ "key": "woredaId", "value": "{{validWoredaId}}" }] }
+          }
+        },
+        {
+          "name": "Woreda Drill-Down (DAP)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/fertilizer-demand/woreda/:woredaId/DAP?productionSeason={{productionSeason}}", "variable": [{ "key": "woredaId", "value": "{{validWoredaId}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Farmer Management",
+      "item": [
+        {
+          "name": "Register Farmer",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName", "value": "Abebe Kebede", "type": "text" },
+                { "key": "gender", "value": "MALE", "type": "text" },
+                { "key": "kebeleId", "value": "{{validKebeleId}}", "type": "text" },
+                { "key": "farmAreaHectares", "value": "1.5", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/farmers" }
+          }
+        },
+        {
+          "name": "Search Farmer by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/farmers/search/:uniqueId", "variable": [{ "key": "uniqueId", "value": "FARM-123" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Demand Lifecycle",
+      "item": [
+        {
+          "name": "Submit Public Demand",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"uniqueFarmerId\": \"{{farmerUniqueId}}\",\n    \"seasonName\": \"{{productionSeason}}\",\n    \"fertilizers\": [{ \"fertilizerTypeId\": \"{{fertilizerTypeId}}\", \"quantity\": 5.0 }]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/demands" }
+          }
+        },
+        {
+          "name": "Generate Bulk Demand (Admin)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fertilizerTypeId\": \"{{fertilizerTypeId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/demands/generate" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Administrative Scoping (Legacy)",
+      "item": [
+        {
+          "name": "Kebele Dashboard",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/kebele/dashboard-summary" } }
+        },
+        {
+          "name": "Kebele Detailed List",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/kebele/detail-list?page=1&limit=10" } }
+        },
+        {
+          "name": "Woreda Dashboard",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/woreda/dashboard-summary" } }
+        },
+        {
+          "name": "Woreda Detailed List",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/demands/woreda-detail-list?page=1&limit=10" } }
+        },
+        {
+          "name": "Region Dashboard",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/region/dashboard-summary" } }
+        },
+        {
+          "name": "Region Detailed List",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/region/detail-list?page=1&limit=10" } }
+        },
+        {
+          "name": "Federal Dashboard",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/federal/dashboard" } }
+        },
+        {
+          "name": "Federal Farmer Requests",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/federal/farmer-requests?page=1&limit=10" } }
+        }
+      ]
+    },
+    {
+      "name": "6. Fertilizer & Supply",
+      "item": [
+        {
+          "name": "Get Fertilizer Types",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fertilizer-types" } }
+        },
+        {
+          "name": "Restricted Search (UREA/DAP)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fertilizer-types/search?fertilizerTypeId={{fertilizerTypeId}}" } }
+        },
+        {
+          "name": "Get Shipping Lots",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/supply/lots" } }
+        },
+        {
+          "name": "Initiate Sale",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"farmerId\": \"{{validFarmerId}}\",\n    \"fertilizerTypeId\": \"{{fertilizerTypeId}}\",\n    \"quantity\": 2.0,\n    \"totalPrice\": 6000,\n    \"paymentMethod\": \"CASH\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/supply/sales/initiate" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Administrative Actions",
+      "item": [
+        {
+          "name": "Kebele Adjust",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fertilizerTypeId\": \"{{fertilizerTypeId}}\",\n    \"quantity\": 120.5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/kebele/adjust" }
+          }
+        },
+        {
+          "name": "Woreda Adjust",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fertilizerTypeId\": \"{{fertilizerTypeId}}\",\n    \"adjustments\": [\n        { \"kebeleId\": \"{{validKebeleId}}\", \"quantity\": 500.0 }\n    ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/demands/woreda-adjust" }
+          }
+        },
+        {
+          "name": "Region Lock",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"lock\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/region/lock" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Fertilizer Requests (Unit List)",
+      "item": [
+        {
+          "name": "Kebeles by Fertilizer Type",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fertilizer-requests/kebele/:id", "variable": [{ "key": "id", "value": "{{fertilizerTypeId}}" }] } }
+        },
+        {
+          "name": "Woredas by Fertilizer Type",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fertilizer-requests/woreda/:id", "variable": [{ "key": "id", "value": "{{fertilizerTypeId}}" }] } }
+        },
+        {
+          "name": "Zones by Fertilizer Type",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fertilizer-requests/zone/:id", "variable": [{ "key": "id", "value": "{{fertilizerTypeId}}" }] } }
+        },
+        {
+          "name": "Regions by Fertilizer Type",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/fertilizer-requests/region/:id", "variable": [{ "key": "id", "value": "{{fertilizerTypeId}}" }] } }
+        }
+      ]
+    },
+    {
+      "name": "9. Geo & Master Data",
+      "item": [
+        {
+          "name": "Get Regions",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/region" } }
+        },
+        {
+          "name": "Get Zones by Region",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/zone?regionId={{validRegionId}}" } }
+        },
+        {
+          "name": "Get Woredas by Zone",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/woreda?zoneId={{validZoneId}}" } }
+        },
+        {
+          "name": "Get Kebeles by Woreda",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/kebele?woredaId={{validWoredaId}}" } }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "pm.test(\"Response time < 200ms\", function () { pm.expect(pm.response.responseTime).to.be.below(200); });",
+          "pm.test(\"Valid JSON response\", function () { pm.response.to.be.json; });"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ]
+}

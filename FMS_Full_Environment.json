@@ -1,0 +1,18 @@
+{
+  "id": "fms-comprehensive-env",
+  "name": "FMS Full Environment",
+  "values": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "enabled": true },
+    { "key": "token", "value": "", "enabled": true },
+    { "key": "productionSeason", "value": "Meher 2025", "enabled": true },
+    { "key": "fertilizerTypeId", "value": "4e01d1e6-42cb-48a0-b734-bf3510e2eb9f", "enabled": true },
+    { "key": "validFederalId", "value": "e8db099b-8b8d-4f10-a238-92037d9576d6", "enabled": true },
+    { "key": "validRegionId", "value": "433cddcf-8ab5-43b6-bfee-b11871866236", "enabled": true },
+    { "key": "validZoneId", "value": "77a75954-2848-425a-9f40-451a81abc496", "enabled": true },
+    { "key": "validWoredaId", "value": "be5cdb08-c1c9-47ff-a92d-926d00dfbd2c", "enabled": true },
+    { "key": "validKebeleId", "value": "b66ec1c2-923f-449c-8c16-27784695e543", "enabled": true },
+    { "key": "farmerUniqueId", "value": "FARM-123456", "enabled": true },
+    { "key": "validFarmerId", "value": "uuid-placeholder", "enabled": true }
+  ],
+  "_postman_variable_scope": "environment"
+}

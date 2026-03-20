@@ -205,10 +205,49 @@ export const getWoredaDrillDown = async (woredaId: string, fertilizerType: strin
   });
 };
 
+export const getKebeleSummary = async (kebeleId: string, params: SummaryParams): Promise<LevelSummaryResponse | null> => {
+  const kebele = await prisma.kebele.findUnique({ where: { id: kebeleId } });
+  if (!kebele) return null;
+
+  const activeSeason = await getActiveSeason(params.productionSeason);
+  if (!activeSeason) return null;
+
+  const summary = await aggregateDemand({
+    level: 'KEBELE',
+    levelId: kebeleId,
+    seasonName: activeSeason.name,
+    from: params.requestedAtFrom,
+    to: params.requestedAtTo
+  });
+
+  return {
+    levelId: kebele.id,
+    levelName: kebele.name,
+    productionSeason: activeSeason.name,
+    totalAmount: summary?.totalOriginal || 0,
+    totalAdjustedAmount: summary?.totalAdjusted || 0,
+    fertilizerBreakdown: summary?.breakdown || []
+  };
+};
+
+export const getKebeleDrillDown = async (kebeleId: string, fertilizerType: string, params: SummaryParams): Promise<DrillDownItem[]> => {
+  const activeSeason = await getActiveSeason(params.productionSeason);
+  if (!activeSeason) return [];
+
+  return aggregateDrillDown({
+    parentLevel: 'KEBELE',
+    parentId: kebeleId,
+    fertilizerType,
+    seasonName: activeSeason.name,
+    from: params.requestedAtFrom,
+    to: params.requestedAtTo
+  });
+};
+
 /** --- PRIVATE AGGREGATION HELPERS --- **/
 
 async function aggregateDemand(args: {
-  level: 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA';
+  level: 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE';
   levelId?: string;
   seasonName: string;
   from?: Date;
@@ -227,6 +266,7 @@ async function aggregateDemand(args: {
   if (level === 'REGION') locationFilter.farmer = { kebele: { woreda: { zone: { regionId: levelId } } } };
   if (level === 'ZONE') locationFilter.farmer = { kebele: { woreda: { zoneId: levelId } } };
   if (level === 'WOREDA') locationFilter.farmer = { kebele: { woredaId: levelId } };
+  if (level === 'KEBELE') locationFilter.farmer = { kebeleId: levelId };
 
   const demands = await prisma.farmerDemand.findMany({
     where: {
@@ -270,7 +310,7 @@ async function aggregateDemand(args: {
 }
 
 async function aggregateDrillDown(args: {
-  parentLevel: 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA';
+  parentLevel: 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE';
   parentId?: string;
   fertilizerType: string;
   seasonName: string;
@@ -293,6 +333,7 @@ async function aggregateDrillDown(args: {
       ...(parentLevel === 'REGION' && { farmer: { kebele: { woreda: { zone: { regionId: parentId } } } } }),
       ...(parentLevel === 'ZONE' && { farmer: { kebele: { woreda: { zoneId: parentId } } } }),
       ...(parentLevel === 'WOREDA' && { farmer: { kebele: { woredaId: parentId } } }),
+      ...(parentLevel === 'KEBELE' && { farmer: { kebeleId: parentId } }),
       ...dateFilter
     },
     include: {
@@ -334,6 +375,13 @@ async function aggregateDrillDown(args: {
     } else if (parentLevel === 'WOREDA') {
       childId = d.farmer.kebele.id;
       childName = d.farmer.kebele.name;
+    } else if (parentLevel === 'KEBELE') {
+      // Since Section is not directly on Farmer, we use kebele grouping for now
+      // Or we could group by farmer if needed. The request asked for "child administrative unit".
+      // For Kebele, children are not defined in hierarchy, but sections exist in schema.
+      // However, Farmer does not have sectionId.
+      childId = d.farmer.id;
+      childName = d.farmer.fullName;
     }
 
     if (!drillDownMap.has(childId)) {

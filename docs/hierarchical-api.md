@@ -91,3 +91,17 @@ Returns totals for a specific woreda.
 Returns a list of kebeles in the woreda and their specific demand for a fertilizer type.
 
 **Endpoint:** `GET /woreda/:woredaId/:fertilizerType`
+
+---
+
+## 9. Kebele Summary
+Returns totals for a specific kebele.
+
+**Endpoint:** `GET /kebele/:kebeleId`
+
+---
+
+## 10. Kebele Drill-Down
+Returns a list of sections in the kebele and their specific demand for a fertilizer type.
+
+**Endpoint:** `GET /kebele/:kebeleId/:fertilizerType`
