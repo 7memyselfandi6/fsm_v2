@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middlewares/error.middleware.js';
+import { correlationMiddleware } from './utils/logger.js';
 import authRoutes from './routes/auth.routes.js';
 import locationRoutes from './routes/location.routes.js';
 import farmerRoutes from './routes/farmer.routes.js';
@@ -28,6 +29,7 @@ import subsidyRoutes from './routes/subsidy.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import financialRoutes from './routes/financial.routes.js';
 import hierarchicalDemandRoutes from './routes/hierarchicalDemand.routes.js';
+import requirementRoutes from './routes/requirement.routes.js';
 
 dotenv.config();
 
@@ -36,6 +38,7 @@ const app = express();
 // Security Middlewares
 app.use(helmet());
 app.use(cookieParser());
+app.use(correlationMiddleware);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -98,6 +101,7 @@ app.use('/api/subsidy', subsidyRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/list', financialRoutes);
 app.use('/api/fertilizer-demand', hierarchicalDemandRoutes);
+app.use('/api/requirements', requirementRoutes);
 
 // Setup Swagger
 // setupSwagger(app);

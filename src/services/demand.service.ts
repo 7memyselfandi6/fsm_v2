@@ -1218,8 +1218,7 @@ export const getHierarchicalDemandSummary = async (
   userLevel: 'FEDERAL' | 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE'
 ): Promise<HierarchicalSummary | null> => {
   const includeDemands = {
-    where: { fertilizerTypeId },
-    select: { originalQuantity: true }
+    include: { fertilizerType: true }
   };
 
   const recursiveInclude = (level: string): any => {
@@ -1300,6 +1299,8 @@ export const getHierarchicalDemandSummary = async (
 
   const formatNode = (node: any, level: string): HierarchicalSummary | null => {
     let totalDemand = 0;
+    let totalUreaAmount = 0;
+    let totalDapAmount = 0;
     const result: any = {};
 
     const nameMappings: Record<string, string> = {
@@ -1320,9 +1321,16 @@ export const getHierarchicalDemandSummary = async (
     result[nameMappings[level]] = node.name;
 
     if (level === 'KEBELE') {
-      totalDemand = node.farmers.reduce((sum: number, farmer: any) => {
-        return sum + farmer.demands.reduce((dSum: number, d: any) => dSum + d.originalQuantity, 0);
-      }, 0);
+      node.farmers.forEach((farmer: any) => {
+        farmer.demands.forEach((d: any) => {
+          const qty = d.originalQuantity;
+          const type = d.fertilizerType?.name?.toUpperCase() || '';
+          
+          totalDemand += qty;
+          if (type.includes('UREA')) totalUreaAmount += qty;
+          if (type.includes('DAP')) totalDapAmount += qty;
+        });
+      });
     } else {
       const mapping = childMappings[level];
       const children = node[mapping.key] || [];
@@ -1333,14 +1341,19 @@ export const getHierarchicalDemandSummary = async (
       if (formattedChildren.length > 0) {
         result[mapping.key] = formattedChildren;
         totalDemand = formattedChildren.reduce((sum: number, child: any) => sum + child.totalDemand, 0);
+        totalUreaAmount = formattedChildren.reduce((sum: number, child: any) => sum + (child.totalUreaAmount || 0), 0);
+        totalDapAmount = formattedChildren.reduce((sum: number, child: any) => sum + (child.totalDapAmount || 0), 0);
       }
     }
 
     if (totalDemand === 0) return null;
 
-  result.totalDemand = Number(totalDemand.toFixed(2));
-  return result;
-};
+    result.totalDemand = Number(totalDemand.toFixed(2));
+    result.totalUreaAmount = Number(totalUreaAmount.toFixed(2));
+    result.totalDapAmount = Number(totalDapAmount.toFixed(2));
+    
+    return result;
+  };
 
   return formatNode(rootNode, userLevel);
 };

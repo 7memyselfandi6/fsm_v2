@@ -1,0 +1,178 @@
+openapi: 3.1.0
+info:
+  title: Farmer Requirement API
+  description: API for managing farmer fertilizer and crop requirements.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+    description: Local development server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Season:
+      type: object
+      required:
+        - seasonName
+        - month
+      properties:
+        seasonName:
+          type: string
+          example: Meher
+        month:
+          type: string
+          example: Tikimt
+    Fertilizer:
+      type: object
+      required:
+        - fertilizerTypeId
+        - quantity
+      properties:
+        fertilizerTypeId:
+          type: string
+          format: uuid
+          example: a02e6fdc-8ba7-4c7b-918a-b2bc2c171cd3
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+    FarmerRequirement:
+      type: object
+      required:
+        - seasons
+        - fertilizers
+        - cropTypeIds
+        - uniqueFarmerId
+      properties:
+        seasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/Season'
+        fertilizers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fertilizer'
+        cropTypeIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        uniqueFarmerId:
+          type: string
+          example: FARM-2026-B011C6
+paths:
+  /requirements:
+    post:
+      summary: Create a new farmer requirement
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmerRequirement'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmerRequirement'
+        '400':
+          description: Bad Request
+        '409':
+          description: Conflict (Duplicate ID or Invalid Master Data)
+    get:
+      summary: Get all farmer requirements
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FarmerRequirement'
+  /requirements/{uniqueFarmerId}:
+    get:
+      summary: Get a farmer requirement by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uniqueFarmerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmerRequirement'
+        '404':
+          description: Not Found
+    put:
+      summary: Update a farmer requirement
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uniqueFarmerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmerRequirement'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmerRequirement'
+        '404':
+          description: Not Found
+        '409':
+          description: Conflict
+    delete:
+      summary: Delete a farmer requirement
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uniqueFarmerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found

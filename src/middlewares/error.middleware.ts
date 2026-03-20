@@ -12,6 +12,7 @@
 // export { errorHandler };
 
 import express from 'express';
+import { logger } from '../utils/logger.js';
 
 // Access the types directly from the express namespace
 const errorHandler = (
@@ -23,6 +24,13 @@ const errorHandler = (
   // If the error has a specific status code, use it; otherwise default to 500
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   
+  logger.error(err.message, {
+    correlationId: (req as any).correlationId,
+    stack: err.stack,
+    path: req.originalUrl,
+    method: req.method
+  });
+
   res.status(statusCode).json({
     success: false,
     message: err.message,

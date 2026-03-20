@@ -248,6 +248,7 @@ model CropType {
   demands    FarmerDemand[]
 
   @@unique([name, categoryId])
+  @@map("crop_master")
 }
 
 model FertilizerType {
@@ -260,6 +261,9 @@ model FertilizerType {
   subsidies    FertilizerSubsidy[]
   inventory    PCInventory[]
   shippingLots ShippingLot[]
+  requirements RequirementFertilizer[]
+
+  @@map("fertilizer_master")
 }
 
 model FarmerDemand {
@@ -418,6 +422,37 @@ model LockHistory {
   entityType     String?
   overriddenBy   User?        @relation("LockOverrideBy", fields: [overriddenById], references: [id])
   region         Region?      @relation(fields: [regionId], references: [id])
+}
+
+model FarmerRequirement {
+  uniqueFarmerId String                  @id
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+  seasons        RequirementSeason[]
+  fertilizers    RequirementFertilizer[]
+  cropTypeIds    String[]
+
+  @@map("farmer_requirement")
+}
+
+model RequirementSeason {
+  id             String            @id @default(uuid())
+  uniqueFarmerId String
+  seasonName     String
+  month          String
+  requirement    FarmerRequirement @relation(fields: [uniqueFarmerId], references: [uniqueFarmerId], onDelete: Cascade)
+
+  @@map("seasons")
+}
+
+model RequirementFertilizer {
+  id               String            @id @default(uuid())
+  uniqueFarmerId   String
+  fertilizerTypeId String
+  quantity         Int // SMALLINT in DB logic, SMALLINT is mapped to Int in Prisma
+  requirement      FarmerRequirement @relation(fields: [uniqueFarmerId], references: [uniqueFarmerId], onDelete: Cascade)
+  fertilizerMaster FertilizerType    @relation(fields: [fertilizerTypeId], references: [id])
+
+  @@map("fertilizers")
 }
 
 enum Role {

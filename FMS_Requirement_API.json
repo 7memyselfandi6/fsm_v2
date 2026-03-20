@@ -1,0 +1,69 @@
+{
+  "info": {
+    "_postman_id": "fms-requirement-api",
+    "name": "FMS Farmer Requirement API",
+    "description": "API for managing farmer fertilizer and crop requirements.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Requirement",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seasons\": [\n    { \"seasonName\": \"Meher\", \"month\": \"Tikimt\" },\n    { \"seasonName\": \"Belg\", \"month\": \"Hidar\" }\n  ],\n  \"fertilizers\": [\n    { \"fertilizerTypeId\": \"{{fertilizerTypeId}}\", \"quantity\": 2 }\n  ],\n  \"cropTypeIds\": [\n    \"{{cropTypeId}}\"\n  ],\n  \"uniqueFarmerId\": \"FARM-2026-B011C6\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/requirements" }
+      }
+    },
+    {
+      "name": "Get All Requirements",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/requirements?page=0&size=50",
+          "query": [
+            { "key": "page", "value": "0" },
+            { "key": "size", "value": "50" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Requirement by ID",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/requirements/:uniqueFarmerId", "variable": [{ "key": "uniqueFarmerId", "value": "FARM-2026-B011C6" }] }
+      }
+    },
+    {
+      "name": "Update Requirement",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seasons\": [\n    { \"seasonName\": \"Mesno\", \"month\": \"Hamle\" }\n  ],\n  \"fertilizers\": [\n    { \"fertilizerTypeId\": \"{{fertilizerTypeId}}\", \"quantity\": 5 }\n  ],\n  \"cropTypeIds\": [\n    \"{{cropTypeId}}\"\n  ],\n  \"uniqueFarmerId\": \"FARM-2026-B011C6\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/requirements/:uniqueFarmerId", "variable": [{ "key": "uniqueFarmerId", "value": "FARM-2026-B011C6" }] }
+      }
+    },
+    {
+      "name": "Delete Requirement",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "{{baseUrl}}/api/requirements/:uniqueFarmerId", "variable": [{ "key": "uniqueFarmerId", "value": "FARM-2026-B011C6" }] }
+      }
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  }
+}

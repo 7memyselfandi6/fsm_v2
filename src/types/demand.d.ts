@@ -57,6 +57,8 @@ export interface Pagination {
 
 export interface HierarchicalSummary {
   totalDemand: number;
+  totalUreaAmount?: number;
+  totalDapAmount?: number;
   federalName?: string;
   regionName?: string;
   zoneName?: string;
