@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.js';
 import { loginUser } from '../services/auth.service.js';
 import { Role, MoaPosition, MoaRole, MoaSector, MoaLeadExecutive } from '@prisma/client';
+import { validateHierarchyAndRole, HierarchyValidationResult } from '../utils/hierarchyValidator.js';
 
 // @desc    Register new staff user
 // @route   POST /api/auth/register
@@ -28,6 +29,17 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     moaLeadExecutive,
     moaDesk,
   } = req.body;
+
+  // 0. Validate Hierarchy and Role
+  const validatedHierarchy: HierarchyValidationResult = await validateHierarchyAndRole({
+    role: role as Role,
+    regionId,
+    zoneId,
+    woredaId,
+    kebeleId,
+    pcId,
+    unionId,
+  });
 
   // Handle profile picture upload via Cloudinary
   const profilePictureUrl = req.file ? req.file.path : null;
@@ -55,12 +67,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       password: hashedPassword,
       profilePictureUrl,
       role: role as Role,
-      regionId,
-      zoneId,
-      woredaId,
-      kebeleId,
-      pcId,
-      unionId,
+      regionId: validatedHierarchy.regionId,
+      zoneId: validatedHierarchy.zoneId,
+      woredaId: validatedHierarchy.woredaId,
+      kebeleId: validatedHierarchy.kebeleId,
+      pcId: validatedHierarchy.pcId,
+      unionId: validatedHierarchy.unionId,
       moaPosition: moaPosition as MoaPosition,
       moaRole: moaRole as MoaRole,
       moaSector: moaSector as MoaSector,

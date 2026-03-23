@@ -37,7 +37,7 @@ export const postTotalAdjusted = asyncHandler(async (req: Request, res: Response
     totalAmount,
     distributions,
     req.user.id,
-    reason
+    //reason
   );
 
   res.status(201).json({ success: true, data: result });
@@ -68,7 +68,7 @@ export const editAdjustment = asyncHandler(async (req: Request, res: Response) =
     totalAmount,
     distributions,
     req.user.id,
-    reason
+    //reason
   );
 
   res.json({ success: true, data: result });

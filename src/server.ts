@@ -27,15 +27,22 @@ const PORT = process.env.PORT || 10000;
 
 // 1. Connect to Database first
 prisma.$connect()
-  .then(() => {
-    console.log('✅ Database connected successfully');
-    
-    // 2. Start the listener ONLY ONCE after DB connects
-    // We use '0.0.0.0' so Render can detect the service
-    app.listen(Number(PORT), '0.0.0.0', () => {
-      console.log(`🚀 Server is humming on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
+  .then(async () => {
+    try {
+      // Perform a simple query to truly verify the connection
+      await prisma.$executeRawUnsafe('SELECT 1');
+      console.log('✅ Database connected and verified successfully');
+      
+      // 2. Start the listener ONLY ONCE after DB connects
+      // We use '0.0.0.0' so Render can detect the service
+      app.listen(Number(PORT), '0.0.0.0', () => {
+        console.log(`🚀 Server is humming on port ${PORT}`);
+        console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      });
+    } catch (dbErr) {
+      console.error('❌ Database verification failed:', dbErr);
+      process.exit(1);
+    }
   })
   .catch((err) => {
     console.error('❌ Prisma connection error:', err);

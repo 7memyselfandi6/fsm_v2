@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 // Manually find and parse the .env file
 const envPath = path.resolve(__dirname, '../../.env');
 let dbUrl = process.env.DATABASE_URL;
-
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
 if (!dbUrl && fs.existsSync(envPath)) {
   const envFile = fs.readFileSync(envPath, 'utf8');
   const match = envFile.match(/DATABASE_URL=["']?(.+?)["']?(\s|$)/);
@@ -24,12 +24,14 @@ if (!dbUrl && fs.existsSync(envPath)) {
 
 // Fallback for dbUrl if not found
 if (!dbUrl) {
-  dbUrl = "postgresql://neondb_owner:npg_hCkF8itsWl4w@ep-spring-snow-ang1jz6m-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
-}
+  console.log('DATABASE_URL is not set in environment variables. Please check your .env file.');
+  throw new Error('DATABASE_URL environment variable is not set');}
+
+const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
 
 const pool = new pg.Pool({ 
   connectionString: dbUrl, 
-  ssl: { rejectUnauthorized: false },
+  ...(isLocal ? {} : { ssl: { rejectUnauthorized: false } }),
   connectionTimeoutMillis: 30000,
 });
 const adapter = new PrismaPg(pool as any);
