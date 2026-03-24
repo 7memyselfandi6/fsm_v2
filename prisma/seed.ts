@@ -117,15 +117,29 @@ async function main() {
     const federal = await prisma.federal.create({ data: { name: 'Ethiopia Federal' } });
     report.Federal = 1;
 
+    const regionData = [
+      { name: 'Afar', code: 'AF' },
+      { name: 'Amhara', code: 'AM' },
+      { name: 'Benishangul-Gumuz', code: 'BG' },
+      { name: 'Central Ethiopia', code: 'CE' },
+      { name: 'Gambela', code: 'GA' },
+      { name: 'Harari', code: 'HA' },
+      { name: 'Oromia', code: 'OR' },
+      { name: 'Sidama', code: 'SI' },
+      { name: 'Somali', code: 'SO' },
+      { name: 'South Ethiopia', code: 'SE' },
+      { name: 'Southwest Ethiopia', code: 'SW' },
+      { name: 'Tigray', code: 'TI' }
+    ];
+
     const regions = [];
-    for (let i = 0; i < 20; i++) {
-      const regionName = `Region Name ${i} ${Math.random().toString(36).substring(7)}`;
-      console.log(`Creating region ${i}: ${regionName}`);
+    for (const r of regionData) {
+      console.log(`Creating region: ${r.name}`);
       const region = await prisma.region.create({
         data: {
-          name: regionName,
+          name: r.name,
           federalId: federal.id,
-          code: `CODE-${i}-${Math.random().toString(36).substring(7)}`,
+          code: r.code,
           status: true,
           isLocked: false,
         }
