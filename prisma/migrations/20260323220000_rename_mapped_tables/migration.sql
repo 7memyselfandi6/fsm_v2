@@ -58,5 +58,6 @@ ADD COLUMN "recurrence" TEXT DEFAULT 'NONE',
 ADD COLUMN "targetDate" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
 
 -- Add values to Role enum (Note: using separate statements as required by Postgres for ALTER TYPE)
-ALTER TYPE "Role" ADD VALUE 'FARMER';
-ALTER TYPE "Role" ADD VALUE 'GUEST';
+-- These were already added in 20260316064846_add_farmer_role_and_link, commenting out to fix migration error
+-- ALTER TYPE "Role" ADD VALUE 'FARMER';
+-- ALTER TYPE "Role" ADD VALUE 'GUEST';

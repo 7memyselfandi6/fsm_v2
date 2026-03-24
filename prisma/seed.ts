@@ -264,7 +264,8 @@ async function main() {
 
     // Add more random users to reach at least 20
     for (let i = 0; i < 10; i++) {
-      const role = faker.helpers.arrayElement(Object.values(Role));
+      const allowedRoles = Object.values(Role).filter(r => r !== Role.GUEST);
+      const role = faker.helpers.arrayElement(allowedRoles);
       await prisma.user.create({
         data: {
           fullName: faker.person.fullName(),

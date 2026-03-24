@@ -26,7 +26,7 @@ export async function validateHierarchyAndRole(data: {
 }): Promise<HierarchyValidationResult> {
   const { role, regionId, zoneId, woredaId, kebeleId, pcId, unionId } = data;
 
-  // 1. MOA‑level users (Federal)
+  // 1. Federal/MOA Level (No IDs required)
   if (role === Role.SUPER_ADMIN || role === Role.MOA_MANAGER || role === Role.MOA_EXPERT) {
     if (regionId || zoneId || woredaId || kebeleId || pcId || unionId) {
       throw new Error('Federal-level users cannot have any location assignment');
@@ -34,7 +34,7 @@ export async function validateHierarchyAndRole(data: {
     return { regionId: null, zoneId: null, woredaId: null, kebeleId: null, pcId: null, unionId: null };
   }
 
-  // 2. Region‑level users
+  // 2. Region Level
   if (role === Role.REGION_MANAGER || role === Role.REGION_EXPERT) {
     if (!regionId) throw new Error('Region ID is required for region‑level users');
     if (zoneId || woredaId || kebeleId || pcId || unionId) {
@@ -45,7 +45,7 @@ export async function validateHierarchyAndRole(data: {
     return { regionId, zoneId: null, woredaId: null, kebeleId: null, pcId: null, unionId: null };
   }
 
-  // 3. Zone‑level users
+  // 3. Zone Level
   if (role === Role.ZONE_MANAGER || role === Role.ZONE_EXPERT) {
     if (!zoneId) throw new Error('Zone ID is required for zone‑level users');
     if (woredaId || kebeleId || pcId || unionId) {
@@ -57,7 +57,7 @@ export async function validateHierarchyAndRole(data: {
     });
     if (!zone) throw new Error('Zone not found');
     if (regionId && zone.regionId !== regionId) {
-      throw new Error('Zone does not belong to the selected region');
+      throw new Error('Provided region ID does not match the actual region of this zone');
     }
     return {
       regionId: zone.regionId,
@@ -69,7 +69,7 @@ export async function validateHierarchyAndRole(data: {
     };
   }
 
-  // 4. Woreda‑level users
+  // 4. Woreda Level
   if (role === Role.WOREDA_MANAGER || role === Role.WOREDA_EXPERT) {
     if (!woredaId) throw new Error('Woreda ID is required for woreda‑level users');
     if (kebeleId || pcId || unionId) {
@@ -81,10 +81,10 @@ export async function validateHierarchyAndRole(data: {
     });
     if (!woreda) throw new Error('Woreda not found');
     if (zoneId && woreda.zoneId !== zoneId) {
-      throw new Error('Woreda does not belong to the selected zone');
+      throw new Error('Provided zone ID does not match the actual zone of this woreda');
     }
     if (regionId && woreda.zone.regionId !== regionId) {
-      throw new Error('Woreda does not belong to the selected region');
+      throw new Error('Provided region ID does not match the actual region of this woreda');
     }
     return {
       regionId: woreda.zone.regionId,
@@ -96,7 +96,7 @@ export async function validateHierarchyAndRole(data: {
     };
   }
 
-  // 5. Kebele‑level users
+  // 5. Kebele Level
   if (role === Role.KEBELE_MANAGER || role === Role.KEBELE_DA) {
     if (!kebeleId) throw new Error('Kebele ID is required for kebele‑level users');
     if (pcId || unionId) {
@@ -108,13 +108,13 @@ export async function validateHierarchyAndRole(data: {
     });
     if (!kebele) throw new Error('Kebele not found');
     if (woredaId && kebele.woredaId !== woredaId) {
-      throw new Error('Kebele does not belong to the selected woreda');
+      throw new Error('Provided woreda ID does not match the actual woreda of this kebele');
     }
     if (zoneId && kebele.woreda.zoneId !== zoneId) {
-      throw new Error('Kebele does not belong to the selected zone');
+      throw new Error('Provided zone ID does not match the actual zone of this kebele');
     }
     if (regionId && kebele.woreda.zone.regionId !== regionId) {
-      throw new Error('Kebele does not belong to the selected region');
+      throw new Error('Provided region ID does not match the actual region of this kebele');
     }
     return {
       regionId: kebele.woreda.zone.regionId,
@@ -126,12 +126,9 @@ export async function validateHierarchyAndRole(data: {
     };
   }
 
-  // 6. PC‑level users
+  // 6. PC Level
   if (role === Role.PC_ACCOUNTANT || role === Role.PC_STOREMAN) {
     if (!pcId) throw new Error('PC ID is required for PC‑level users');
-    if (unionId) {
-      throw new Error('PC‑level users cannot have union assignments');
-    }
     const pc = await prisma.pC.findUnique({
       where: { id: pcId },
       include: {
@@ -146,23 +143,20 @@ export async function validateHierarchyAndRole(data: {
             },
           },
         },
-        destination: {
-          include: { union: true }
-        }
       },
     });
     if (!pc) throw new Error('PC not found');
     if (kebeleId && pc.kebeleId !== kebeleId) {
-      throw new Error('PC does not belong to the selected kebele');
+      throw new Error('Provided kebele ID does not match the actual kebele of this PC');
     }
     if (woredaId && pc.kebele.woredaId !== woredaId) {
-      throw new Error('PC does not belong to the selected woreda');
+      throw new Error('Provided woreda ID does not match the actual woreda of this PC');
     }
     if (zoneId && pc.kebele.woreda.zoneId !== zoneId) {
-      throw new Error('PC does not belong to the selected zone');
+      throw new Error('Provided zone ID does not match the actual zone of this PC');
     }
     if (regionId && pc.kebele.woreda.zone.regionId !== regionId) {
-      throw new Error('PC does not belong to the selected region');
+      throw new Error('Provided region ID does not match the actual region of this PC');
     }
     return {
       regionId: pc.kebele.woreda.zone.regionId,
@@ -170,22 +164,25 @@ export async function validateHierarchyAndRole(data: {
       woredaId: pc.kebele.woredaId,
       kebeleId: pc.kebeleId,
       pcId,
-      unionId: pc.destination.unionId,
+      unionId: unionId || null, 
     };
   }
 
-  // 7. Union‑level users
+  // 7. Union Level
   if (role === Role.UNION_MEMBER) {
     if (!unionId) throw new Error('Union ID is required for union‑level users');
+    if (pcId || kebeleId || woredaId) {
+      throw new Error('Union‑level users cannot have PC, kebele, or woreda assignments directly');
+    }
     const union = await prisma.union.findUnique({
       where: { id: unionId },
     });
     if (!union) throw new Error('Union not found');
     if (regionId && union.regionId !== regionId) {
-      throw new Error('Union does not belong to the selected region');
+      throw new Error('Provided region ID does not match the actual region of this union');
     }
     if (zoneId && union.zoneId && union.zoneId !== zoneId) {
-      throw new Error('Union does not belong to the selected zone');
+      throw new Error('Provided zone ID does not match the actual zone of this union');
     }
     return {
       regionId: union.regionId,
@@ -199,8 +196,6 @@ export async function validateHierarchyAndRole(data: {
 
   // 8. Farmer / Guest
   if (role === Role.FARMER || role === Role.GUEST) {
-    // For now, allow these but they don't have mandatory hierarchy checks here
-    // unless the system evolves.
     return { 
       regionId: regionId || null, 
       zoneId: zoneId || null, 
